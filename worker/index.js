@@ -1,8 +1,10 @@
 import {
+  applyMemberIdentity,
   applyCheckIn,
   createInitialGame,
   createDefaultWorkspace,
   getLegalPieces,
+  getMemberKey,
   getMemberProfile,
   joinGameState,
   normalizeChat,
@@ -116,15 +118,31 @@ export class YuhuangHub {
     const workspace = normalizeWorkspace(workspaces.shared || workspaces[user.id] || createDefaultWorkspace())
     workspaces.shared = workspace
     await this.state.storage.put('workspaces', workspaces)
-    return { workspace }
+    return { workspace: this.viewWorkspaceForUser(workspace, user) }
   }
 
   async saveWorkspace(user, workspace) {
     const workspaces = (await this.state.storage.get('workspaces')) || {}
-    workspaces.shared = normalizeWorkspace(workspace)
+    const existing = normalizeWorkspace(workspaces.shared || createDefaultWorkspace())
+    const incoming = normalizeWorkspace(workspace)
+    if (getMemberKey(user.username) !== 'BBG') {
+      incoming.miniGames.drawGuess.prompt = existing.miniGames.drawGuess.prompt
+      incoming.miniGames.drawGuess.drawer = existing.miniGames.drawGuess.drawer
+      incoming.miniGames.drawGuess.drawerKey = existing.miniGames.drawGuess.drawerKey
+    }
+    workspaces.shared = incoming
     workspaces.shared.updatedAt = new Date().toISOString()
     await this.state.storage.put('workspaces', workspaces)
-    return { workspace: workspaces.shared }
+    return { workspace: this.viewWorkspaceForUser(workspaces.shared, user) }
+  }
+
+  viewWorkspaceForUser(workspace, user) {
+    const view = structuredClone(workspace)
+    if (getMemberKey(user.username) !== getMemberKey(view.miniGames?.drawGuess?.drawerKey || 'BBG')) {
+      view.miniGames.drawGuess.prompt = ''
+      view.miniGames.drawGuess.hiddenPrompt = true
+    }
+    return view
   }
 
   async getChat() {
@@ -134,16 +152,17 @@ export class YuhuangHub {
   }
 
   async sendChatMessage(user, { text }) {
+    const displayUser = applyMemberIdentity(user)
     const chat = normalizeChat((await this.state.storage.get('chat')) || null)
     const messageText = String(text || '').trim()
     if (!messageText) throw new ApiError('先写点东西', 422)
     const url = extractUrl(messageText)
     chat.messages.push({
       id: crypto.randomUUID().slice(0, 8),
-      userId: user.id,
-      displayName: user.displayName,
-      username: user.username,
-      avatar: getMemberProfile(user.username).avatar,
+      userId: displayUser.id,
+      displayName: displayUser.displayName,
+      username: displayUser.username,
+      avatar: displayUser.avatar,
       text: messageText,
       card: url ? await previewExternalLink(url).then((data) => data.card) : null,
       reactions: {},
@@ -165,7 +184,7 @@ export class YuhuangHub {
   }
 
   async checkInChat(user) {
-    const chat = applyCheckIn(normalizeChat((await this.state.storage.get('chat')) || null), user)
+    const chat = applyCheckIn(normalizeChat((await this.state.storage.get('chat')) || null), applyMemberIdentity(user))
     await this.state.storage.put('chat', chat)
     return { chat }
   }
@@ -180,6 +199,7 @@ export class YuhuangHub {
   }
 
   async createSession(user) {
+    const displayUser = applyMemberIdentity(user)
     const token = crypto.randomUUID()
     const sessions = (await this.state.storage.get('sessions')) || {}
     sessions[token] = { userId: user.id, username: user.username, createdAt: new Date().toISOString() }
@@ -189,8 +209,8 @@ export class YuhuangHub {
       user: {
         id: user.id,
         username: user.username,
-        displayName: user.displayName,
-        avatar: getMemberProfile(user.username).avatar,
+        displayName: displayUser.displayName,
+        avatar: displayUser.avatar,
       },
     }
   }
@@ -205,7 +225,7 @@ export class YuhuangHub {
     const users = (await this.state.storage.get('users')) || {}
     const user = users[session.username]
     if (!user) throw new ApiError('账号不存在', 401)
-    return { id: user.id, username: user.username, displayName: user.displayName, avatar: getMemberProfile(user.username).avatar }
+    return applyMemberIdentity({ id: user.id, username: user.username, displayName: user.displayName, avatar: user.avatar })
   }
 
   async createGame(user) {

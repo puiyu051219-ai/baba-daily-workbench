@@ -10,7 +10,7 @@ const localBackend = { known: false, online: false }
 
 export const memberProfiles = [
   { id: 'BBG', username: 'BBG', name: '八八公', avatar: '🦁', role: 'bbg' },
-  { id: 'BBP', username: 'BBP', name: '潘进进', avatar: '🌷', role: 'bbp' },
+  { id: 'BBP', username: 'BBP', name: '潘劲劲', avatar: '🐠', role: 'bbp' },
   { id: 'both', username: 'both', name: '共同', avatar: '✨', role: 'both' },
 ]
 
@@ -34,6 +34,21 @@ export function getMemberKey(value) {
 export function getMemberProfile(value) {
   const key = getMemberKey(value)
   return memberProfiles.find((profile) => profile.id === key) || memberProfiles[2]
+}
+
+export function applyMemberIdentity(user) {
+  const profile = getMemberProfile(user?.username)
+  if (profile.id === 'BBG' || profile.id === 'BBP') {
+    return {
+      ...user,
+      displayName: profile.name,
+      avatar: profile.avatar,
+    }
+  }
+  return {
+    ...user,
+    avatar: user?.avatar || profile.avatar,
+  }
 }
 
 export function getSavedSession() {
@@ -285,10 +300,11 @@ function localLogin({ username, password }) {
 }
 
 function makeSession(user) {
+  const displayUser = applyMemberIdentity(user)
   return {
     session: {
       token: `local_${user.id}`,
-      user: { id: user.id, username: user.username, displayName: user.displayName },
+      user: { id: user.id, username: user.username, displayName: displayUser.displayName, avatar: displayUser.avatar },
     },
   }
 }
@@ -296,7 +312,7 @@ function makeSession(user) {
 function getLocalUser() {
   const session = getSavedSession()
   if (!session?.token?.startsWith('local_')) throw new Error('请先登录')
-  return session.user
+  return applyMemberIdentity(session.user)
 }
 
 function localGetWorkspace() {
@@ -305,14 +321,31 @@ function localGetWorkspace() {
   const workspace = normalizeWorkspace(workspaces.shared || workspaces[user.id] || createDefaultWorkspace())
   workspaces.shared = workspace
   writeJson(localWorkspacesKey, workspaces, { silent: true })
-  return { workspace }
+  return { workspace: viewWorkspaceForUser(workspace, user) }
 }
 
 function localSaveWorkspace(workspace) {
+  const user = getLocalUser()
   const workspaces = readJson(localWorkspacesKey, {})
-  workspaces.shared = normalizeWorkspace(workspace)
+  const existing = normalizeWorkspace(workspaces.shared || createDefaultWorkspace())
+  const incoming = normalizeWorkspace(workspace)
+  if (getMemberKey(user.username) !== 'BBG') {
+    incoming.miniGames.drawGuess.prompt = existing.miniGames.drawGuess.prompt
+    incoming.miniGames.drawGuess.drawer = existing.miniGames.drawGuess.drawer
+    incoming.miniGames.drawGuess.drawerKey = existing.miniGames.drawGuess.drawerKey
+  }
+  workspaces.shared = incoming
   writeJson(localWorkspacesKey, workspaces)
-  return { workspace: workspaces.shared }
+  return { workspace: viewWorkspaceForUser(workspaces.shared, user) }
+}
+
+function viewWorkspaceForUser(workspace, user) {
+  const view = structuredClone(workspace)
+  if (getMemberKey(user.username) !== getMemberKey(view.miniGames?.drawGuess?.drawerKey || 'BBG')) {
+    view.miniGames.drawGuess.prompt = ''
+    view.miniGames.drawGuess.hiddenPrompt = true
+  }
+  return view
 }
 
 function localPreviewLink(url) {
@@ -375,7 +408,7 @@ function localGetChat() {
 }
 
 function localSendChatMessage({ text }) {
-  const user = getLocalUser()
+  const user = applyMemberIdentity(getLocalUser())
   const chat = normalizeChat(readJson(localChatKey, null))
   const messageText = String(text || '').trim()
   if (!messageText) throw new Error('先写点东西')
@@ -385,7 +418,7 @@ function localSendChatMessage({ text }) {
     userId: user.id,
     displayName: user.displayName,
     username: user.username,
-    avatar: getMemberProfile(user.username).avatar,
+    avatar: user.avatar,
     text: messageText,
     card: url ? localPreviewLink(url) : null,
     reactions: {},
@@ -408,7 +441,7 @@ function localReactToMessage(messageId, emoji) {
 }
 
 function localCheckInChat() {
-  const user = getLocalUser()
+  const user = applyMemberIdentity(getLocalUser())
   const chat = applyCheckIn(normalizeChat(readJson(localChatKey, null)), user)
   writeJson(localChatKey, chat)
   return { chat }
@@ -704,7 +737,8 @@ function createDefaultMiniGames() {
     },
     drawGuess: {
       prompt: '公主请上车',
-      drawer: '',
+      drawer: getMemberProfile('BBG').name,
+      drawerKey: 'BBG',
       image: '',
       guesses: [],
       round: 1,
@@ -740,6 +774,8 @@ function normalizeMiniGames(games, fallback) {
       ...(games?.drawGuess || {}),
       guesses: Array.isArray(games?.drawGuess?.guesses) ? games.drawGuess.guesses : [],
       image: games?.drawGuess?.image || '',
+      drawer: getMemberProfile('BBG').name,
+      drawerKey: 'BBG',
       round: validNumber(games?.drawGuess?.round, base.drawGuess.round),
     },
     wordChain: {
@@ -839,14 +875,18 @@ export function normalizeChat(chat) {
 }
 
 function normalizeChatMessage(message) {
-  const profile = getMemberProfile(message?.username || message?.displayName || message?.userId)
+  const identity = applyMemberIdentity({
+    username: message?.username,
+    displayName: message?.displayName,
+    avatar: message?.avatar,
+  })
   return {
     ...message,
     id: message?.id || createId(),
     userId: message?.userId || '',
-    username: message?.username || profile.username,
-    displayName: message?.displayName || profile.name,
-    avatar: message?.avatar || profile.avatar,
+    username: message?.username || identity.username,
+    displayName: identity.displayName || message?.displayName || '新消息',
+    avatar: identity.avatar || '✨',
     text: message?.text || '',
     card: message?.card || null,
     reactions: message?.reactions || {},
@@ -855,6 +895,7 @@ function normalizeChatMessage(message) {
 }
 
 export function applyCheckIn(chat, user) {
+  const displayUser = applyMemberIdentity(user)
   const today = todayString()
   if (chat.lastCheckInDate !== today) {
     const yesterday = todayString(-1)
@@ -863,10 +904,10 @@ export function applyCheckIn(chat, user) {
   }
   chat.messages.push({
     id: createId(),
-    userId: user.id,
-    displayName: user.displayName,
-    username: user.username,
-    avatar: getMemberProfile(user.username).avatar,
+    userId: displayUser.id,
+    displayName: displayUser.displayName,
+    username: displayUser.username,
+    avatar: displayUser.avatar,
     text: '今日打卡',
     card: null,
     reactions: { '🔥': [user.id] },
@@ -900,6 +941,7 @@ function getSafeLocale() {
 }
 
 export function createInitialGame(user) {
+  const displayUser = applyMemberIdentity(user)
   const game = {
     id: createId(),
     code: createCode(),
@@ -914,19 +956,21 @@ export function createInitialGame(user) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
-  joinGameState(game, user)
+  joinGameState(game, displayUser)
   game.log.unshift('房间已开，等下一位加入。')
   return game
 }
 
 export function joinGameState(game, user) {
-  if (game.players.some((player) => player.id === user.id)) return game
+  const displayUser = applyMemberIdentity(user)
+  if (game.players.some((player) => player.id === displayUser.id)) return game
   if (game.players.length >= 4) throw new Error('这个房间已经满了')
   const color = colors[game.players.length]
   game.players.push({
-    id: user.id,
-    username: user.username,
-    displayName: user.displayName,
+    id: displayUser.id,
+    username: displayUser.username,
+    displayName: displayUser.displayName,
+    avatar: displayUser.avatar,
     color: color.id,
     colorName: color.name,
     emoji: color.emoji,

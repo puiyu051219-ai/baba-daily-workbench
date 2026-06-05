@@ -979,9 +979,12 @@ select {
 
 .photo-card,
 .mini-game-card {
-  background: #fffdf7;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 252, 245, 0.96)),
+    #fffdf7;
   border: 1px solid #e1d8c8;
   border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(31, 37, 34, 0.08);
   overflow: hidden;
 }
 
@@ -1012,6 +1015,10 @@ select {
   font-size: 24px;
   line-height: 1.2;
   margin: 0;
+}
+
+.mini-game-card .primary-button {
+  justify-self: start;
 }
 
 .menu-row {
@@ -1062,6 +1069,7 @@ select {
 }
 
 .order-list article {
+  border: 1px solid rgba(47, 119, 114, 0.12);
   display: grid;
   gap: 8px;
 }
@@ -1096,6 +1104,23 @@ select {
   max-height: 170px;
   object-fit: contain;
   width: 100%;
+}
+
+.secret-line {
+  background: #eef3ef;
+  border-radius: 8px;
+  color: #285c45;
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0;
+  padding: 9px 10px;
+}
+
+.prompt-form {
+  background: #f4efe5;
+  border: 1px solid #e1d8c8;
+  border-radius: 8px;
+  padding: 8px;
 }
 
 .draw-overlay {

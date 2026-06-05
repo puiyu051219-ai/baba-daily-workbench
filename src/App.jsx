@@ -46,6 +46,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  applyMemberIdentity,
   clearSession,
   checkInChat,
   colors,
@@ -637,13 +638,14 @@ function AuthScreen({ locale, setLocale, mode, onAuth, t }) {
 }
 
 function Header({ session, mode, logout, locale, setLocale, t }) {
+  const user = applyMemberIdentity(session.user)
   return (
     <header className="top-bar">
       <BrandBlock t={t} />
       <div className="top-actions">
         <LanguageSelect locale={locale} setLocale={setLocale} compact />
         <SyncPill mode={mode} t={t} compact />
-        <span className="user-pill">{session.user.displayName}</span>
+        <span className="user-pill">{user.avatar} {user.displayName}</span>
         <button onClick={logout}>
           <LogOut size={17} />
           {t.logout}
@@ -1098,7 +1100,7 @@ function JournalPanel({ workspace, commit, session, t }) {
               <option value="insight">{t.journalInsight}</option>
             </select>
             <select value={mood} onChange={(event) => setMood(event.target.value)}>
-              {['🙂', '🥹', '😤', '😴', '🔥', '🌧️', '🌷'].map((item) => (
+              {['🙂', '🥹', '😤', '😴', '🔥', '🌧️', '🐠'].map((item) => (
                 <option key={item} value={item}>
                   {item}
                 </option>
@@ -1673,6 +1675,7 @@ function PlayPanel({ workspace, commit, session, setRoute, t }) {
 function KitchenGame({ workspace, commit, session, t }) {
   const [, setTick] = useState(Date.now())
   const kitchen = workspace.miniGames?.kitchen || { menu: [], orders: [], score: 0, combo: 0, customers: [] }
+  const currentUser = applyMemberIdentity(session.user)
 
   useEffect(() => {
     const timer = window.setInterval(() => setTick(Date.now()), 1000)
@@ -1691,7 +1694,7 @@ function KitchenGame({ workspace, commit, session, t }) {
         emoji: dish.emoji,
         points: dish.points,
         customer,
-        by: session.user.displayName,
+        by: currentUser.displayName,
         stepIndex: 0,
         readyAt: '',
         status: 'waiting',
@@ -1794,9 +1797,14 @@ function KitchenGame({ workspace, commit, session, t }) {
 function DrawGuessGame({ workspace, commit, session, t }) {
   const [guess, setGuess] = useState('')
   const [drawing, setDrawing] = useState(false)
+  const [customPrompt, setCustomPrompt] = useState('')
   const canvasRef = useRef(null)
   const drawingRef = useRef(false)
   const game = workspace.miniGames?.drawGuess || { prompt: '', guesses: [], image: '' }
+  const currentUser = applyMemberIdentity(session.user)
+  const currentKey = getMemberKey(currentUser.username)
+  const drawerKey = getMemberKey(game.drawerKey || game.drawer || 'BBG')
+  const isDrawer = currentKey === drawerKey
   const prompts = [
     '公主请上车',
     '尊嘟假嘟',
@@ -1817,12 +1825,28 @@ function DrawGuessGame({ workspace, commit, session, t }) {
       const current = draft.miniGames.drawGuess.prompt
       const next = prompts[(prompts.indexOf(current) + 1 + prompts.length) % prompts.length]
       draft.miniGames.drawGuess.prompt = next
-      draft.miniGames.drawGuess.drawer = session.user.displayName
+      draft.miniGames.drawGuess.drawerKey = 'BBG'
+      draft.miniGames.drawGuess.drawer = getMemberProfile('BBG').name
       draft.miniGames.drawGuess.image = ''
       draft.miniGames.drawGuess.guesses = []
       draft.miniGames.drawGuess.round = (draft.miniGames.drawGuess.round || 1) + 1
       return draft
     })
+  }
+
+  const setPrompt = async (event) => {
+    event.preventDefault()
+    if (!isDrawer || !customPrompt.trim()) return
+    await commit((draft) => {
+      draft.miniGames.drawGuess.prompt = customPrompt.trim()
+      draft.miniGames.drawGuess.drawerKey = 'BBG'
+      draft.miniGames.drawGuess.drawer = getMemberProfile('BBG').name
+      draft.miniGames.drawGuess.image = ''
+      draft.miniGames.drawGuess.guesses = []
+      draft.miniGames.drawGuess.round = (draft.miniGames.drawGuess.round || 1) + 1
+      return draft
+    })
+    setCustomPrompt('')
   }
 
   const openCanvas = () => {
@@ -1836,7 +1860,8 @@ function DrawGuessGame({ workspace, commit, session, t }) {
     const image = canvas.toDataURL('image/png')
     await commit((draft) => {
       draft.miniGames.drawGuess.image = image
-      draft.miniGames.drawGuess.drawer = session.user.displayName
+      draft.miniGames.drawGuess.drawerKey = currentKey
+      draft.miniGames.drawGuess.drawer = currentUser.displayName
       return draft
     })
     setDrawing(false)
@@ -1867,7 +1892,7 @@ function DrawGuessGame({ workspace, commit, session, t }) {
     await commit((draft) => {
       draft.miniGames.drawGuess.guesses.unshift({
         id: createClientId(),
-        by: session.user.displayName,
+        by: currentUser.displayName,
         text: guess.trim(),
         createdAt: new Date().toISOString(),
       })
@@ -1882,22 +1907,33 @@ function DrawGuessGame({ workspace, commit, session, t }) {
         <Brush size={17} />
         {t.drawGuess}
       </span>
-      <h3>{game.prompt}</h3>
+      <h3>{isDrawer ? game.prompt : game.image ? '看画猜答案' : '等 BBG 出题和画画'}</h3>
+      <p className="secret-line">{isDrawer ? '你是画的人，谜底只给你看。' : '你是猜的人，看不到谜底，只能看画。'}</p>
+      {isDrawer ? (
+        <form className="mini-form prompt-form" onSubmit={setPrompt}>
+          <input value={customPrompt} onChange={(event) => setCustomPrompt(event.target.value)} placeholder="自定义这一轮要猜什么" />
+          <button type="submit">
+            <Send size={15} />
+          </button>
+        </form>
+      ) : null}
       <div className="doodle-box">
         {game.image ? <img alt="" src={game.image} /> : <Brush size={34} />}
-        <span>{game.image ? `${game.drawer || session.user.displayName} 的画` : t.openCanvas}</span>
+        <span>{game.image ? `${game.drawer || getMemberProfile('BBG').name} 的画` : isDrawer ? t.openCanvas : '等画面同步'}</span>
       </div>
-      <button className="primary-button" onClick={openCanvas}>
-        <Brush size={16} />
-        {t.openCanvas}
-      </button>
+      {isDrawer ? (
+        <button className="primary-button" onClick={openCanvas}>
+          <Brush size={16} />
+          {t.openCanvas}
+        </button>
+      ) : null}
       <form className="mini-form" onSubmit={submitGuess}>
         <input value={guess} onChange={(event) => setGuess(event.target.value)} placeholder={t.guess} />
         <button type="submit">
           <Send size={15} />
         </button>
       </form>
-      <button onClick={nextPrompt}>{t.nextQuestion}</button>
+      {isDrawer ? <button onClick={nextPrompt}>{t.newPrompt}</button> : null}
       <div className="mini-log">
         {game.guesses.slice(0, 3).map((item) => (
           <p key={item.id}>{item.by}: {item.text}</p>
