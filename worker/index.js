@@ -1,8 +1,10 @@
 import {
+  applyCheckIn,
   createInitialGame,
   createDefaultWorkspace,
   getLegalPieces,
   joinGameState,
+  normalizeChat,
   normalizeWorkspace,
   trackLength,
   toGlobalPosition,
@@ -54,6 +56,20 @@ export class YuhuangHub {
         const body = await request.json()
         return json(await summarizeExternalLink(body.card, this.env))
       }
+      if (request.method === 'GET' && url.pathname === '/api/chat') {
+        return json(await this.getChat())
+      }
+      if (request.method === 'POST' && url.pathname === '/api/chat/messages') {
+        return json(await this.sendChatMessage(user, await request.json()))
+      }
+      if (request.method === 'POST' && url.pathname === '/api/chat/checkin') {
+        return json(await this.checkInChat(user))
+      }
+      const chatReaction = url.pathname.match(/^\/api\/chat\/messages\/([^/]+)\/react$/)
+      if (request.method === 'POST' && chatReaction) {
+        const body = await request.json()
+        return json(await this.reactToMessage(user, chatReaction[1], body.emoji))
+      }
 
       const match = url.pathname.match(/^\/api\/games\/([^/]+)(?:\/(roll|move|restart))?$/)
       if (match) {
@@ -75,9 +91,11 @@ export class YuhuangHub {
     }
   }
 
-  async register({ username, password, displayName }) {
+  async register({ username, password, displayName, inviteCode }) {
     const normalized = normalizeUsername(username)
     if (!normalized || !password) throw new ApiError('账号和密码都要填', 422)
+    const expectedInvite = this.env.INVITE_CODE || 'BABA-ONLY'
+    if (String(inviteCode || '').trim() !== expectedInvite) throw new ApiError('邀请码不对', 403)
     const users = (await this.state.storage.get('users')) || {}
     if (users[normalized]) throw new ApiError('这个账号已经注册过', 409)
     const user = {
@@ -94,18 +112,59 @@ export class YuhuangHub {
 
   async getWorkspace(user) {
     const workspaces = (await this.state.storage.get('workspaces')) || {}
-    const workspace = normalizeWorkspace(workspaces[user.id] || createDefaultWorkspace())
-    workspaces[user.id] = workspace
+    const workspace = normalizeWorkspace(workspaces.shared || workspaces[user.id] || createDefaultWorkspace())
+    workspaces.shared = workspace
     await this.state.storage.put('workspaces', workspaces)
     return { workspace }
   }
 
   async saveWorkspace(user, workspace) {
     const workspaces = (await this.state.storage.get('workspaces')) || {}
-    workspaces[user.id] = normalizeWorkspace(workspace)
-    workspaces[user.id].updatedAt = new Date().toISOString()
+    workspaces.shared = normalizeWorkspace(workspace)
+    workspaces.shared.updatedAt = new Date().toISOString()
     await this.state.storage.put('workspaces', workspaces)
-    return { workspace: workspaces[user.id] }
+    return { workspace: workspaces.shared }
+  }
+
+  async getChat() {
+    const chat = normalizeChat((await this.state.storage.get('chat')) || null)
+    await this.state.storage.put('chat', chat)
+    return { chat }
+  }
+
+  async sendChatMessage(user, { text }) {
+    const chat = normalizeChat((await this.state.storage.get('chat')) || null)
+    const messageText = String(text || '').trim()
+    if (!messageText) throw new ApiError('先写点东西', 422)
+    const url = extractUrl(messageText)
+    chat.messages.push({
+      id: crypto.randomUUID().slice(0, 8),
+      userId: user.id,
+      displayName: user.displayName,
+      text: messageText,
+      card: url ? await previewExternalLink(url).then((data) => data.card) : null,
+      reactions: {},
+      createdAt: new Date().toISOString(),
+    })
+    chat.updatedAt = new Date().toISOString()
+    await this.state.storage.put('chat', chat)
+    return { chat }
+  }
+
+  async reactToMessage(user, messageId, emoji) {
+    const chat = normalizeChat((await this.state.storage.get('chat')) || null)
+    const message = chat.messages.find((item) => item.id === messageId)
+    if (!message) throw new ApiError('这条消息找不到了', 404)
+    toggleReaction(message, emoji, user.id)
+    chat.updatedAt = new Date().toISOString()
+    await this.state.storage.put('chat', chat)
+    return { chat }
+  }
+
+  async checkInChat(user) {
+    const chat = applyCheckIn(normalizeChat((await this.state.storage.get('chat')) || null), user)
+    await this.state.storage.put('chat', chat)
+    return { chat }
   }
 
   async login({ username, password }) {
@@ -458,6 +517,20 @@ function detectPlatform(url) {
   if (host.includes('tiktok')) return 'TikTok'
   if (host.includes('youtube') || host.includes('youtu.be')) return 'YouTube'
   return host
+}
+
+function extractUrl(text) {
+  return String(text || '').match(/https?:\/\/\S+/i)?.[0] || ''
+}
+
+function toggleReaction(message, emoji, userId) {
+  const key = String(emoji || '').trim()
+  if (!key) return
+  message.reactions = message.reactions || {}
+  const list = new Set(message.reactions[key] || [])
+  if (list.has(userId)) list.delete(userId)
+  else list.add(userId)
+  message.reactions[key] = [...list]
 }
 
 function metaContent(html, attr, value) {

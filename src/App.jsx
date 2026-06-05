@@ -1,6 +1,9 @@
 import {
   AlarmClock,
   BookOpen,
+  Brain,
+  Camera,
+  CalendarPlus,
   CalendarDays,
   Check,
   ChevronRight,
@@ -14,27 +17,38 @@ import {
   Link as LinkIcon,
   ListChecks,
   LogOut,
+  MessageCircle,
   Pause,
+  PencilLine,
   Plane,
   Play,
   Plus,
   RefreshCw,
   RotateCcw,
   Search,
+  Send,
   Share2,
   ShieldCheck,
+  Smile,
   Sparkles,
   Star,
   TimerReset,
   Trophy,
+  Upload,
+  Utensils,
   UserPlus,
   Users,
+  Wand2,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   clearSession,
+  checkInChat,
   colors,
+  createGoogleCalendarUrl,
   createGame,
+  getChat,
+  getDateMeta,
   getBackendMode,
   getGame,
   getLegalPieces,
@@ -47,11 +61,13 @@ import {
   movePiece,
   previewLink,
   registerAccount,
+  reactToMessage,
   restartGame,
   rollDice,
   saveLocale,
   saveSession,
   saveWorkspace,
+  sendChatMessage,
   summarizeLink,
   toGlobalPosition,
   trackLength,
@@ -70,13 +86,14 @@ const copy = {
   'zh-Hans': {
     appName: '八八婆和八八公的日常工作台',
     appSub: '两个人用',
-    authTitle: '把今天、学习、链接和小游戏放在一起。',
+    authTitle: '把今天、学习、私聊和小游戏放在一起。',
     authText: '注册账号后就能保存任务、倒数日、外链卡片，也能开一局飞行棋。',
     register: '注册',
     login: '登录',
     displayName: '昵称',
     account: '账号',
     password: '密码',
+    inviteCode: '邀请码',
     enter: '进入',
     cloud: '云端同步',
     local: '本地演示',
@@ -86,7 +103,9 @@ const copy = {
     study: '学习',
     focus: '番茄钟',
     dates: '倒数日',
-    links: '链接',
+    links: '私聊',
+    photos: '照片墙',
+    fortune: '小命理',
     play: '一起玩',
     today: '今天',
     important: '重要',
@@ -105,6 +124,28 @@ const copy = {
     dateTitle: '事件',
     linkTitle: '标题',
     linkUrl: '链接',
+    chatPlaceholder: '发消息或贴链接',
+    checkIn: '打卡',
+    streak: '火花',
+    photoTitle: '照片标题',
+    photoUrl: '照片链接或上传',
+    photoNote: '照片备注',
+    startTime: '开始',
+    endTime: '结束',
+    reminder: '提醒',
+    addToGoogle: '加到 Google Calendar',
+    lunar: '农历',
+    quickPick: '常用',
+    kitchen: '小厨房',
+    drawGuess: '你画我猜',
+    wordChain: '成语接龙',
+    riddle: '脑筋急转弯',
+    serve: '上菜',
+    cooking: '制作中',
+    ready: '可以上菜',
+    guess: '猜一下',
+    reveal: '揭晓',
+    nextQuestion: '换题',
     summarize: 'AI 总结',
     preview: '抓取信息',
     open: '打开',
@@ -137,13 +178,14 @@ const copy = {
   'zh-Hant-HK': {
     appName: '八八婆同八八公嘅日常工作台',
     appSub: '兩個人用',
-    authTitle: '今日、學習、連結同小遊戲，放埋一齊。',
+    authTitle: '今日、學習、私訊同小遊戲，放埋一齊。',
     authText: '註冊之後可以存任務、倒數日、外鏈卡片，亦可以開局飛行棋。',
     register: '註冊',
     login: '登入',
     displayName: '暱稱',
     account: '帳號',
     password: '密碼',
+    inviteCode: '邀請碼',
     enter: '入去',
     cloud: '雲端同步',
     local: '本機示範',
@@ -153,7 +195,9 @@ const copy = {
     study: '學習',
     focus: '番茄鐘',
     dates: '倒數日',
-    links: '連結',
+    links: '私訊',
+    photos: '相片牆',
+    fortune: '小命理',
     play: '一齊玩',
     today: '今日',
     important: '重要',
@@ -172,6 +216,28 @@ const copy = {
     dateTitle: '事件',
     linkTitle: '標題',
     linkUrl: '連結',
+    chatPlaceholder: '發訊息或者貼連結',
+    checkIn: '打卡',
+    streak: '火花',
+    photoTitle: '相片標題',
+    photoUrl: '相片連結或上載',
+    photoNote: '相片備註',
+    startTime: '開始',
+    endTime: '結束',
+    reminder: '提醒',
+    addToGoogle: '加到 Google Calendar',
+    lunar: '農曆',
+    quickPick: '常用',
+    kitchen: '小廚房',
+    drawGuess: '你畫我估',
+    wordChain: '成語接龍',
+    riddle: '腦筋急轉彎',
+    serve: '上菜',
+    cooking: '整緊',
+    ready: '可以上菜',
+    guess: '估吓',
+    reveal: '開估',
+    nextQuestion: '換題',
     summarize: 'AI 摘要',
     preview: '抓資料',
     open: '打開',
@@ -211,6 +277,7 @@ const copy = {
     displayName: 'Name',
     account: 'Username',
     password: 'Password',
+    inviteCode: 'Invite code',
     enter: 'Enter',
     cloud: 'Cloud sync',
     local: 'Local demo',
@@ -220,7 +287,9 @@ const copy = {
     study: 'Study',
     focus: 'Timer',
     dates: 'Dates',
-    links: 'Links',
+    links: 'Chat',
+    photos: 'Photos',
+    fortune: 'Fortune',
     play: 'Play',
     today: 'Today',
     important: 'Important',
@@ -239,6 +308,28 @@ const copy = {
     dateTitle: 'Event',
     linkTitle: 'Title',
     linkUrl: 'Link',
+    chatPlaceholder: 'Message or paste a link',
+    checkIn: 'Check in',
+    streak: 'Streak',
+    photoTitle: 'Photo title',
+    photoUrl: 'Photo link or upload',
+    photoNote: 'Photo note',
+    startTime: 'Start',
+    endTime: 'End',
+    reminder: 'Reminder',
+    addToGoogle: 'Add to Google Calendar',
+    lunar: 'Lunar',
+    quickPick: 'Quick',
+    kitchen: 'Kitchen',
+    drawGuess: 'Draw Guess',
+    wordChain: 'Idiom Chain',
+    riddle: 'Riddle',
+    serve: 'Serve',
+    cooking: 'Cooking',
+    ready: 'Ready',
+    guess: 'Guess',
+    reveal: 'Reveal',
+    nextQuestion: 'Next',
     summarize: 'AI summary',
     preview: 'Fetch',
     open: 'Open',
@@ -276,6 +367,8 @@ const navItems = [
   { id: 'focus', icon: AlarmClock },
   { id: 'dates', icon: CalendarDays },
   { id: 'links', icon: LinkIcon },
+  { id: 'photos', icon: Camera },
+  { id: 'fortune', icon: Wand2 },
   { id: 'play', icon: Gamepad2 },
 ]
 
@@ -397,6 +490,7 @@ function AuthScreen({ locale, setLocale, mode, onAuth, t }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -405,7 +499,7 @@ function AuthScreen({ locale, setLocale, mode, onAuth, t }) {
     setBusy(true)
     setError('')
     try {
-      const payload = { username, password, displayName }
+      const payload = { username, password, displayName, inviteCode }
       const data = authMode === 'register' ? await registerAccount(payload) : await loginAccount(payload)
       onAuth(data.session)
     } catch (submitError) {
@@ -442,6 +536,12 @@ function AuthScreen({ locale, setLocale, mode, onAuth, t }) {
             <label>
               {t.displayName}
               <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Aaron" />
+            </label>
+          ) : null}
+          {authMode === 'register' ? (
+            <label>
+              {t.inviteCode}
+              <input value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} placeholder="Only us" autoCapitalize="characters" />
             </label>
           ) : null}
           <label>
@@ -539,9 +639,11 @@ function Dashboard({ session, setRoute, locale, t }) {
 
   useEffect(() => {
     refresh()
+    const timer = window.setInterval(refresh, 1600)
     const localSync = () => refresh()
     window.addEventListener('yhd-local-sync', localSync)
     return () => {
+      window.clearInterval(timer)
       window.removeEventListener('yhd-local-sync', localSync)
     }
   }, [refresh])
@@ -605,6 +707,8 @@ function Dashboard({ session, setRoute, locale, t }) {
         {active === 'focus' ? <FocusPanel {...panelProps} /> : null}
         {active === 'dates' ? <DatesPanel {...panelProps} /> : null}
         {active === 'links' ? <LinksPanel {...panelProps} /> : null}
+        {active === 'photos' ? <PhotosPanel {...panelProps} /> : null}
+        {active === 'fortune' ? <FortunePanel {...panelProps} /> : null}
         {active === 'play' ? <PlayPanel {...panelProps} /> : null}
       </section>
     </section>
@@ -627,22 +731,38 @@ function PlanPanel({ workspace, commit, t }) {
     return task.list === list
   })
 
-  const addTask = (event) => {
+  const addTask = async (event) => {
     event.preventDefault()
     if (!title.trim()) return
-    commit((draft) => {
+    await commit((draft) => {
+      const targetList = list === 'all' ? 'today' : list
       draft.tasks.unshift({
         id: createClientId(),
         title: title.trim(),
-        list,
+        list: targetList,
         dueDate,
+        done: false,
+        important: targetList === 'important',
+        createdAt: new Date().toISOString(),
+      })
+      return draft
+    })
+    setTitle('')
+  }
+
+  const addQuickTask = async (label) => {
+    await commit((draft) => {
+      draft.tasks.unshift({
+        id: createClientId(),
+        title: label,
+        list: list === 'all' || list === 'important' ? 'today' : list,
+        dueDate: todayString(),
         done: false,
         important: list === 'important',
         createdAt: new Date().toISOString(),
       })
       return draft
     })
-    setTitle('')
   }
 
   return (
@@ -664,6 +784,14 @@ function PlanPanel({ workspace, commit, t }) {
             {t.add}
           </button>
         </form>
+        <div className="quick-row">
+          <span>{t.quickPick}</span>
+          {(workspace.quickTasks || []).map((item) => (
+            <button key={item} onClick={() => addQuickTask(item)}>
+              {item}
+            </button>
+          ))}
+        </div>
         <div className="task-list">
           {filtered.map((task) => (
             <TaskRow key={task.id} task={task} commit={commit} t={t} />
@@ -718,10 +846,10 @@ function StudyPanel({ workspace, commit, t }) {
   const [title, setTitle] = useState('')
   const [note, setNote] = useState('')
 
-  const addStudy = (event) => {
+  const addStudy = async (event) => {
     event.preventDefault()
     if (!title.trim()) return
-    commit((draft) => {
+    await commit((draft) => {
       draft.studyItems.unshift({
         id: createClientId(),
         course: course.trim() || t.course,
@@ -737,6 +865,27 @@ function StudyPanel({ workspace, commit, t }) {
     setNote('')
   }
 
+  const quickStudies = [
+    { course: t.course, title: '整理一张复习卡', note: '写成自己看得懂的话' },
+    { course: t.course, title: '让难点变简单', note: '把不会的点拆开' },
+    { course: t.course, title: '做一组错题复盘', note: '错因比答案重要' },
+  ]
+
+  const addQuickStudy = async (item) => {
+    await commit((draft) => {
+      draft.studyItems.unshift({
+        id: createClientId(),
+        course: item.course,
+        title: item.title,
+        note: item.note,
+        done: false,
+        minutes: 25,
+        createdAt: new Date().toISOString(),
+      })
+      return draft
+    })
+  }
+
   return (
     <div className="tool-panel">
       <form className="stack-form" onSubmit={addStudy}>
@@ -750,6 +899,14 @@ function StudyPanel({ workspace, commit, t }) {
           {t.add}
         </button>
       </form>
+      <div className="quick-row">
+        <span>{t.quickPick}</span>
+        {quickStudies.map((item) => (
+          <button key={item.title} onClick={() => addQuickStudy(item)}>
+            {item.title}
+          </button>
+        ))}
+      </div>
       <div className="card-grid">
         {workspace.studyItems.map((item) => (
           <article className={`study-card ${item.done ? 'done' : ''}`} key={item.id}>
@@ -778,6 +935,15 @@ function StudyPanel({ workspace, commit, t }) {
 function FocusPanel({ workspace, commit, t }) {
   const [secondsLeft, setSecondsLeft] = useState(workspace.timer.focusMinutes * 60)
   const [running, setRunning] = useState(false)
+  const [focusInput, setFocusInput] = useState(String(workspace.timer.focusMinutes))
+  const [breakInput, setBreakInput] = useState(String(workspace.timer.breakMinutes))
+  const [sessionsInput, setSessionsInput] = useState(String(workspace.timer.sessions))
+
+  useEffect(() => {
+    setFocusInput(String(workspace.timer.focusMinutes))
+    setBreakInput(String(workspace.timer.breakMinutes))
+    setSessionsInput(String(workspace.timer.sessions))
+  }, [workspace.timer.focusMinutes, workspace.timer.breakMinutes, workspace.timer.sessions])
 
   useEffect(() => {
     if (!running) return undefined
@@ -798,13 +964,16 @@ function FocusPanel({ workspace, commit, t }) {
     return () => window.clearInterval(timer)
   }, [commit, running, workspace.timer.focusMinutes])
 
-  const setMinutes = (value) => {
-    const minutes = Number(value)
-    commit((draft) => {
-      draft.timer.focusMinutes = minutes
+  const commitTimerNumber = async (field, value, options = {}) => {
+    if (value === '') return
+    const number = Number(value)
+    if (!Number.isFinite(number)) return
+    const nextValue = Math.max(options.min ?? 0, Math.min(options.max ?? 999, number))
+    await commit((draft) => {
+      draft.timer[field] = nextValue
       return draft
     })
-    setSecondsLeft(minutes * 60)
+    if (field === 'focusMinutes') setSecondsLeft(nextValue * 60)
   }
 
   return (
@@ -831,27 +1000,46 @@ function FocusPanel({ workspace, commit, t }) {
       <section className="tool-panel compact-panel">
         <label>
           {t.focusLabel}
-          <input value={workspace.timer.focusMinutes} min="5" max="90" onChange={(event) => setMinutes(event.target.value)} type="number" />
+          <input
+            value={focusInput}
+            min="1"
+            max="180"
+            onBlur={(event) => commitTimerNumber('focusMinutes', event.target.value, { min: 1, max: 180 })}
+            onChange={(event) => {
+              setFocusInput(event.target.value)
+              commitTimerNumber('focusMinutes', event.target.value, { min: 1, max: 180 })
+            }}
+            type="number"
+          />
         </label>
         <label>
           {t.breakLabel}
           <input
-            value={workspace.timer.breakMinutes}
-            min="3"
-            max="30"
-            onChange={(event) =>
-              commit((draft) => {
-                draft.timer.breakMinutes = Number(event.target.value)
-                return draft
-              })
-            }
+            value={breakInput}
+            min="1"
+            max="90"
+            onBlur={(event) => commitTimerNumber('breakMinutes', event.target.value, { min: 1, max: 90 })}
+            onChange={(event) => {
+              setBreakInput(event.target.value)
+              commitTimerNumber('breakMinutes', event.target.value, { min: 1, max: 90 })
+            }}
             type="number"
           />
         </label>
-        <div className="stat-tile">
-          <span>{t.sessions}</span>
-          <strong>{workspace.timer.sessions}</strong>
-        </div>
+        <label>
+          {t.sessions}
+          <input
+            value={sessionsInput}
+            min="0"
+            max="999"
+            onBlur={(event) => commitTimerNumber('sessions', event.target.value, { min: 0, max: 999 })}
+            onChange={(event) => {
+              setSessionsInput(event.target.value)
+              commitTimerNumber('sessions', event.target.value, { min: 0, max: 999 })
+            }}
+            type="number"
+          />
+        </label>
       </section>
     </div>
   )
@@ -859,18 +1047,24 @@ function FocusPanel({ workspace, commit, t }) {
 
 function DatesPanel({ workspace, commit, t }) {
   const [title, setTitle] = useState('')
-  const [date, setDate] = useState(todayString(7))
+  const [date, setDate] = useState('2026-07-03')
   const [type, setType] = useState('countdown')
+  const [startTime, setStartTime] = useState('18:00')
+  const [endTime, setEndTime] = useState('22:00')
+  const [remindMinutes, setRemindMinutes] = useState('60')
 
-  const addDate = (event) => {
+  const addDate = async (event) => {
     event.preventDefault()
     if (!title.trim()) return
-    commit((draft) => {
+    await commit((draft) => {
       draft.dates.unshift({
         id: createClientId(),
         title: title.trim(),
         date,
         type,
+        startTime,
+        endTime,
+        remindMinutes: Number(remindMinutes || 0),
         note: '',
         createdAt: new Date().toISOString(),
       })
@@ -881,12 +1075,17 @@ function DatesPanel({ workspace, commit, t }) {
 
   return (
     <div className="tool-panel">
-      <form className="inline-form" onSubmit={addDate}>
+      <form className="calendar-form" onSubmit={addDate}>
         <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t.dateTitle} />
         <input value={date} onChange={(event) => setDate(event.target.value)} type="date" />
+        <input aria-label={t.startTime} value={startTime} onChange={(event) => setStartTime(event.target.value)} type="time" />
+        <input aria-label={t.endTime} value={endTime} onChange={(event) => setEndTime(event.target.value)} type="time" />
+        <input aria-label={t.reminder} value={remindMinutes} onChange={(event) => setRemindMinutes(event.target.value)} min="0" type="number" />
         <select value={type} onChange={(event) => setType(event.target.value)}>
           <option value="countdown">{t.countdown}</option>
           <option value="anniversary">{t.anniversary}</option>
+          <option value="birthday">Birthday</option>
+          <option value="holiday">Holiday</option>
           <option value="deadline">Deadline</option>
         </select>
         <button type="submit">
@@ -896,106 +1095,219 @@ function DatesPanel({ workspace, commit, t }) {
       </form>
       <div className="date-grid">
         {workspace.dates.map((item) => (
-          <article className="date-card" key={item.id}>
-            <span>{item.type}</span>
-            <h3>{item.title}</h3>
-            <strong>{dateDistance(item.date) || item.date}</strong>
-            <p>{item.date}</p>
-          </article>
+          <DateCard item={item} key={item.id} t={t} />
         ))}
       </div>
     </div>
   )
 }
 
-function LinksPanel({ workspace, commit, t }) {
-  const [url, setUrl] = useState('')
-  const [title, setTitle] = useState('')
-  const [note, setNote] = useState('')
-  const [busyId, setBusyId] = useState('')
+function DateCard({ item, t }) {
+  const meta = getDateMeta(item.date)
+  const tags = [...new Set([meta.holiday, ...meta.festivals, ...meta.terms].filter(Boolean))]
+  return (
+    <article className="date-card">
+      <span>{item.type}</span>
+      <h3>{item.title}</h3>
+      <strong>{eventDistance(item) || item.date}</strong>
+      <p>
+        {item.date}
+        {item.startTime ? ` · ${item.startTime}${item.endTime ? `-${item.endTime}` : ''}` : ''}
+      </p>
+      <p>
+        {t.lunar} {meta.lunar}
+        {tags.length ? ` · ${tags.join(' · ')}` : ''}
+      </p>
+      <p>{t.reminder}: {formatReminder(item.remindMinutes)}</p>
+      <a className="calendar-link" href={createGoogleCalendarUrl(item)} rel="noreferrer" target="_blank">
+        <CalendarPlus size={15} />
+        {t.addToGoogle}
+      </a>
+    </article>
+  )
+}
 
-  const addLink = async (event) => {
-    event.preventDefault()
-    if (!url.trim()) return
-    const baseCard = {
-      id: createClientId(),
-      url: url.trim(),
-      title: title.trim() || detectPlatform(url),
-      note: note.trim(),
-      platform: detectPlatform(url),
-      summary: '',
-      image: '',
-      description: '',
-      createdAt: new Date().toISOString(),
-    }
-    await commit((draft) => {
-      draft.links = [baseCard, ...(draft.links || [])]
-      return draft
-    })
-    setUrl('')
-    setTitle('')
-    setNote('')
+function LinksPanel({ session, t }) {
+  const [chat, setChat] = useState(null)
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
 
-    setBusyId(baseCard.id)
+  const refreshChat = useCallback(async () => {
     try {
-      const data = await previewLink(baseCard.url)
-      await commit((draft) => {
-        const item = draft.links?.find((candidate) => candidate.id === baseCard.id)
-        if (item) Object.assign(item, data.card)
-        return draft
-      })
+      const data = await getChat()
+      setChat(data.chat)
+      setError('')
+    } catch (chatError) {
+      setError(chatError.message)
+    }
+  }, [])
+
+  useEffect(() => {
+    refreshChat()
+    const timer = window.setInterval(refreshChat, 1500)
+    const localSync = () => refreshChat()
+    window.addEventListener('yhd-local-sync', localSync)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('yhd-local-sync', localSync)
+    }
+  }, [refreshChat])
+
+  const submit = async (event) => {
+    event.preventDefault()
+    if (!text.trim()) return
+    setBusy(true)
+    try {
+      const data = await sendChatMessage({ text })
+      setChat(data.chat)
+      setText('')
+      setError('')
+    } catch (sendError) {
+      setError(sendError.message)
     } finally {
-      setBusyId('')
+      setBusy(false)
     }
   }
 
-  const runSummary = async (card) => {
-    setBusyId(card.id)
-    try {
-      const data = await summarizeLink(card)
-      await commit((draft) => {
-        const item = draft.links?.find((candidate) => candidate.id === card.id)
-        if (item) item.summary = data.summary
-        return draft
-      })
-    } finally {
-      setBusyId('')
-    }
+  const react = async (messageId, emoji) => {
+    const data = await reactToMessage(messageId, emoji)
+    setChat(data.chat)
+  }
+
+  const checkIn = async () => {
+    const data = await checkInChat()
+    setChat(data.chat)
+  }
+
+  return (
+    <div className="chat-shell">
+      <div className="chat-header">
+        <div>
+          <span className="eyebrow">
+            <MessageCircle size={18} />
+            {t.links}
+          </span>
+          <h2>{t.streak} {chat?.streak || 0}</h2>
+        </div>
+        <button className="streak-button" onClick={checkIn}>
+          <Sparkles size={17} />
+          {t.checkIn}
+        </button>
+      </div>
+      <div className="message-list">
+        {(chat?.messages || []).map((message) => (
+          <MessageBubble key={message.id} message={message} mine={message.userId === session.user.id} onReact={react} t={t} />
+        ))}
+      </div>
+      {error ? <p className="form-error">{error}</p> : null}
+      <form className="chat-composer" onSubmit={submit}>
+        <input value={text} onChange={(event) => setText(event.target.value)} placeholder={t.chatPlaceholder} />
+        <button className="primary-button" disabled={busy} type="submit">
+          <Send size={17} />
+        </button>
+      </form>
+    </div>
+  )
+}
+
+function MessageBubble({ message, mine, onReact, t }) {
+  const reactions = Object.entries(message.reactions || {}).filter(([, users]) => users.length)
+  return (
+    <article className={`message-bubble ${mine ? 'mine' : ''}`}>
+      <div className="message-meta">
+        <span>{message.displayName}</span>
+        <time>{formatShortTime(message.createdAt)}</time>
+      </div>
+      <p>{message.text}</p>
+      {message.card ? <MessageLinkCard card={message.card} t={t} /> : null}
+      <div className="reaction-row">
+        {['😂', '❤️', '👍', '🥹', '🔥'].map((emoji) => (
+          <button key={emoji} onClick={() => onReact(message.id, emoji)} title={emoji}>
+            {emoji}
+          </button>
+        ))}
+        {reactions.map(([emoji, users]) => (
+          <span key={emoji}>{emoji} {users.length}</span>
+        ))}
+      </div>
+    </article>
+  )
+}
+
+function MessageLinkCard({ card, t }) {
+  return (
+    <a className="message-link-card" href={card.url} rel="noreferrer" target="_blank">
+      <div>{card.image ? <img alt="" src={card.image} /> : <ExternalLink size={20} />}</div>
+      <section>
+        <span>{card.platform || detectPlatform(card.url)}</span>
+        <strong>{card.title || card.url}</strong>
+        <p>{card.description || t.open}</p>
+      </section>
+    </a>
+  )
+}
+
+function PhotosPanel({ workspace, commit, t }) {
+  const [title, setTitle] = useState('')
+  const [url, setUrl] = useState('')
+  const [note, setNote] = useState('')
+
+  const addPhoto = async (event) => {
+    event.preventDefault()
+    if (!url.trim()) return
+    await commit((draft) => {
+      draft.photos = [
+        {
+          id: createClientId(),
+          title: title.trim() || '照片',
+          url: url.trim(),
+          note: note.trim(),
+          createdAt: new Date().toISOString(),
+        },
+        ...(draft.photos || []),
+      ]
+      return draft
+    })
+    setTitle('')
+    setUrl('')
+    setNote('')
+  }
+
+  const uploadFile = async (file) => {
+    if (!file) return
+    const dataUrl = await readFileAsDataUrl(file)
+    setUrl(dataUrl)
+    if (!title) setTitle(file.name.replace(/\.[^.]+$/, ''))
   }
 
   return (
     <div className="tool-panel">
-      <form className="stack-form" onSubmit={addLink}>
-        <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder={t.linkUrl} />
+      <form className="stack-form" onSubmit={addPhoto}>
         <div className="two-fields">
-          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t.linkTitle} />
-          <input value={note} onChange={(event) => setNote(event.target.value)} placeholder={t.note} />
+          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t.photoTitle} />
+          <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder={t.photoUrl} />
+        </div>
+        <div className="two-fields">
+          <input value={note} onChange={(event) => setNote(event.target.value)} placeholder={t.photoNote} />
+          <label className="file-pick">
+            <Upload size={16} />
+            {t.photoUrl}
+            <input accept="image/*" onChange={(event) => uploadFile(event.target.files?.[0])} type="file" />
+          </label>
         </div>
         <button type="submit">
           <Plus size={18} />
           {t.add}
         </button>
       </form>
-      <div className="link-grid">
-        {(workspace.links || []).map((card) => (
-          <article className="link-card" key={card.id}>
-            <div className="link-thumb">
-              {card.image ? <img alt="" src={card.image} /> : <Search size={28} />}
-            </div>
-            <div className="link-body">
-              <span>{card.platform || detectPlatform(card.url)}</span>
-              <h3>{card.title || card.url}</h3>
-              <p>{card.summary || card.description || card.note || ' '}</p>
-              <div className="link-actions">
-                <a href={card.url} rel="noreferrer" target="_blank">
-                  <ExternalLink size={16} />
-                  {t.open}
-                </a>
-                <button disabled={busyId === card.id} onClick={() => runSummary(card)}>
-                  <Sparkles size={16} />
-                  {busyId === card.id ? t.checking : t.summarize}
-                </button>
-              </div>
+      <div className="photo-grid">
+        {(workspace.photos || []).map((photo) => (
+          <article className="photo-card" key={photo.id}>
+            <img alt="" src={photo.url} />
+            <div>
+              <strong>{photo.title}</strong>
+              <p>{photo.note || ' '}</p>
             </div>
           </article>
         ))}
@@ -1004,10 +1316,62 @@ function LinksPanel({ workspace, commit, t }) {
   )
 }
 
-function PlayPanel({ setRoute, t }) {
+function FortunePanel({ workspace, commit, t }) {
+  const [question, setQuestion] = useState('')
+  const meta = getDateMeta(todayString())
+  const fortune = workspace.fortune || { notes: [] }
+
+  const addNote = async (event) => {
+    event.preventDefault()
+    if (!question.trim()) return
+    await commit((draft) => {
+      draft.fortune = draft.fortune || { notes: [] }
+      draft.fortune.notes.unshift({
+        id: createClientId(),
+        question: question.trim(),
+        answer: makeFortuneAnswer(question, meta),
+        createdAt: new Date().toISOString(),
+      })
+      return draft
+    })
+    setQuestion('')
+  }
+
+  return (
+    <div className="fortune-layout">
+      <section className="tool-panel">
+        <span className="eyebrow">
+          <Wand2 size={18} />
+          {t.fortune}
+        </span>
+        <h2>{t.lunar} {meta.lunar}</h2>
+        <p>{[meta.holiday, ...meta.festivals, ...meta.terms].filter(Boolean).join(' · ') || '今天宜轻松安排'}</p>
+        <form className="inline-form" onSubmit={addNote}>
+          <input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="今天适合做什么？" />
+          <button type="submit">
+            <Sparkles size={18} />
+            {t.add}
+          </button>
+        </form>
+      </section>
+      <div className="card-grid">
+        {(fortune.notes || []).map((item) => (
+          <article className="study-card" key={item.id}>
+            <span>{formatShortTime(item.createdAt)}</span>
+            <h3>{item.question}</h3>
+            <p>{item.answer}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PlayPanel({ workspace, commit, session, setRoute, t }) {
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const miniProps = { workspace, commit, session, t }
 
   const openGame = (game) => {
     window.history.pushState({}, '', `/game/${game.id}`)
@@ -1042,27 +1406,260 @@ function PlayPanel({ setRoute, t }) {
   }
 
   return (
-    <div className="play-panel">
-      <section className="play-hero">
-        <Plane size={42} />
-        <h2>谕皇大帝</h2>
-        <p>一起玩的板块。先放飞行棋，后面还能继续加别的小游戏。</p>
-        <button className="primary-button" onClick={create} disabled={busy}>
-          <Plus size={18} />
-          {t.createGame}
-        </button>
-      </section>
-      <section className="tool-panel compact-panel">
-        <form className="stack-form" onSubmit={join}>
-          <input value={code} onChange={(event) => setCode(event.target.value)} placeholder={t.roomCode} autoCapitalize="characters" />
-          <button type="submit" disabled={busy}>
-            <Users size={18} />
-            {t.joinGame}
+    <div className="play-hub">
+      <div className="play-panel">
+        <section className="play-hero">
+          <Plane size={42} />
+          <h2>谕皇大帝</h2>
+          <p>一起玩的板块。飞行棋是正式对局，小厨房和猜题是随手玩两分钟的。</p>
+          <button className="primary-button" onClick={create} disabled={busy}>
+            <Plus size={18} />
+            {t.createGame}
           </button>
-        </form>
-        {error ? <p className="form-error">{error}</p> : null}
-      </section>
+        </section>
+        <section className="tool-panel compact-panel">
+          <form className="stack-form" onSubmit={join}>
+            <input value={code} onChange={(event) => setCode(event.target.value)} placeholder={t.roomCode} autoCapitalize="characters" />
+            <button type="submit" disabled={busy}>
+              <Users size={18} />
+              {t.joinGame}
+            </button>
+          </form>
+          {error ? <p className="form-error">{error}</p> : null}
+        </section>
+      </div>
+      <div className="mini-game-grid">
+        <KitchenGame {...miniProps} />
+        <DrawGuessGame {...miniProps} />
+        <WordChainGame {...miniProps} />
+        <RiddleGame {...miniProps} />
+      </div>
     </div>
+  )
+}
+
+function KitchenGame({ workspace, commit, session, t }) {
+  const [, setTick] = useState(Date.now())
+  const kitchen = workspace.miniGames?.kitchen || { menu: [], orders: [], score: 0 }
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setTick(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const startDish = async (dish) => {
+    await commit((draft) => {
+      draft.miniGames.kitchen.orders.unshift({
+        id: createClientId(),
+        name: dish.name,
+        points: dish.points,
+        by: session.user.displayName,
+        readyAt: new Date(Date.now() + dish.seconds * 1000).toISOString(),
+        served: false,
+      })
+      return draft
+    })
+  }
+
+  const serveDish = async (orderId) => {
+    await commit((draft) => {
+      const order = draft.miniGames.kitchen.orders.find((item) => item.id === orderId)
+      if (order && !order.served) {
+        order.served = true
+        draft.miniGames.kitchen.score += order.points || 1
+      }
+      return draft
+    })
+  }
+
+  return (
+    <section className="mini-game-card kitchen-card">
+      <span className="eyebrow">
+        <Utensils size={17} />
+        {t.kitchen}
+      </span>
+      <h3>{kitchen.score} 分</h3>
+      <div className="menu-row">
+        {kitchen.menu.map((dish) => (
+          <button key={dish.id} onClick={() => startDish(dish)}>
+            {dish.name}
+            <small>{dish.seconds}s</small>
+          </button>
+        ))}
+      </div>
+      <div className="order-list">
+        {kitchen.orders.slice(0, 5).map((order) => {
+          const left = Math.max(0, Math.ceil((new Date(order.readyAt) - Date.now()) / 1000))
+          const ready = left === 0
+          return (
+            <article className={order.served ? 'served' : ready ? 'ready' : ''} key={order.id}>
+              <strong>{order.name}</strong>
+              <span>{order.served ? t.done : ready ? t.ready : `${t.cooking} ${left}s`}</span>
+              {!order.served && ready ? (
+                <button onClick={() => serveDish(order.id)}>
+                  <Check size={15} />
+                  {t.serve}
+                </button>
+              ) : null}
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function DrawGuessGame({ workspace, commit, session, t }) {
+  const [guess, setGuess] = useState('')
+  const game = workspace.miniGames?.drawGuess || { prompt: '', guesses: [] }
+  const prompts = ['猫咪开飞机', '会跳舞的奶茶', '下雨天的火锅', '生气的闹钟', '戴墨镜的月亮']
+
+  const nextPrompt = async () => {
+    await commit((draft) => {
+      const current = draft.miniGames.drawGuess.prompt
+      const next = prompts[(prompts.indexOf(current) + 1 + prompts.length) % prompts.length]
+      draft.miniGames.drawGuess.prompt = next
+      draft.miniGames.drawGuess.drawer = session.user.displayName
+      draft.miniGames.drawGuess.guesses = []
+      return draft
+    })
+  }
+
+  const submitGuess = async (event) => {
+    event.preventDefault()
+    if (!guess.trim()) return
+    await commit((draft) => {
+      draft.miniGames.drawGuess.guesses.unshift({
+        id: createClientId(),
+        by: session.user.displayName,
+        text: guess.trim(),
+        createdAt: new Date().toISOString(),
+      })
+      return draft
+    })
+    setGuess('')
+  }
+
+  return (
+    <section className="mini-game-card">
+      <span className="eyebrow">
+        <PencilLine size={17} />
+        {t.drawGuess}
+      </span>
+      <h3>{game.prompt}</h3>
+      <div className="doodle-box">
+        <PencilLine size={34} />
+        <span>画在纸上，答案在这里同步</span>
+      </div>
+      <form className="mini-form" onSubmit={submitGuess}>
+        <input value={guess} onChange={(event) => setGuess(event.target.value)} placeholder={t.guess} />
+        <button type="submit">
+          <Send size={15} />
+        </button>
+      </form>
+      <button onClick={nextPrompt}>{t.nextQuestion}</button>
+      <div className="mini-log">
+        {game.guesses.slice(0, 3).map((item) => (
+          <p key={item.id}>{item.by}: {item.text}</p>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function WordChainGame({ workspace, commit, session, t }) {
+  const [word, setWord] = useState('')
+  const game = workspace.miniGames?.wordChain || { current: '', history: [] }
+
+  const submitWord = async (event) => {
+    event.preventDefault()
+    if (!word.trim()) return
+    await commit((draft) => {
+      draft.miniGames.wordChain.current = word.trim()
+      draft.miniGames.wordChain.history.unshift(`${session.user.displayName}: ${word.trim()}`)
+      return draft
+    })
+    setWord('')
+  }
+
+  return (
+    <section className="mini-game-card">
+      <span className="eyebrow">
+        <Brain size={17} />
+        {t.wordChain}
+      </span>
+      <h3>{game.current}</h3>
+      <form className="mini-form" onSubmit={submitWord}>
+        <input value={word} onChange={(event) => setWord(event.target.value)} placeholder={t.guess} />
+        <button type="submit">
+          <Send size={15} />
+        </button>
+      </form>
+      <div className="mini-log">
+        {game.history.slice(0, 5).map((item, index) => (
+          <p key={`${item}-${index}`}>{item}</p>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function RiddleGame({ workspace, commit, session, t }) {
+  const [guess, setGuess] = useState('')
+  const game = workspace.miniGames?.riddle || { question: '', answer: '', revealed: false, guesses: [] }
+  const riddles = [
+    { question: '什么东西越洗越脏？', answer: '水' },
+    { question: '什么门永远关不上？', answer: '球门' },
+    { question: '什么东西越生气越大？', answer: '脾气' },
+    { question: '什么东西明明是你的，别人用得最多？', answer: '名字' },
+  ]
+
+  const submitGuess = async (event) => {
+    event.preventDefault()
+    if (!guess.trim()) return
+    await commit((draft) => {
+      draft.miniGames.riddle.guesses.unshift(`${session.user.displayName}: ${guess.trim()}`)
+      return draft
+    })
+    setGuess('')
+  }
+
+  const next = async () => {
+    await commit((draft) => {
+      const index = riddles.findIndex((item) => item.question === draft.miniGames.riddle.question)
+      const nextItem = riddles[(index + 1 + riddles.length) % riddles.length]
+      draft.miniGames.riddle = { ...nextItem, revealed: false, guesses: [] }
+      return draft
+    })
+  }
+
+  return (
+    <section className="mini-game-card">
+      <span className="eyebrow">
+        <Smile size={17} />
+        {t.riddle}
+      </span>
+      <h3>{game.question}</h3>
+      <p className="answer-line">{game.revealed ? game.answer : '•••'}</p>
+      <form className="mini-form" onSubmit={submitGuess}>
+        <input value={guess} onChange={(event) => setGuess(event.target.value)} placeholder={t.guess} />
+        <button type="submit">
+          <Send size={15} />
+        </button>
+      </form>
+      <div className="mini-actions">
+        <button onClick={() => commit((draft) => {
+          draft.miniGames.riddle.revealed = !draft.miniGames.riddle.revealed
+          return draft
+        })}>{t.reveal}</button>
+        <button onClick={next}>{t.nextQuestion}</button>
+      </div>
+      <div className="mini-log">
+        {game.guesses.slice(0, 3).map((item, index) => (
+          <p key={`${item}-${index}`}>{item}</p>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -1349,6 +1946,44 @@ function dateDistance(dateString) {
   if (diff === 0) return 'today'
   if (diff > 0) return `${diff}d left`
   return `${Math.abs(diff)}d ago`
+}
+
+function eventDistance(event) {
+  if (!event?.date) return ''
+  if (event.type !== 'anniversary' && event.type !== 'birthday') return dateDistance(event.date)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const source = new Date(`${event.date}T00:00:00`)
+  const next = new Date(today.getFullYear(), source.getMonth(), source.getDate())
+  if (next < today) next.setFullYear(next.getFullYear() + 1)
+  const diff = Math.round((next - today) / 86400000)
+  if (diff === 0) return 'today'
+  return `${diff}d left`
+}
+
+function formatReminder(value) {
+  const minutes = Number(value || 0)
+  if (!minutes) return '不提醒'
+  if (minutes >= 1440) return `${Math.round(minutes / 1440)}天前`
+  if (minutes >= 60) return `${Math.round(minutes / 60)}小时前`
+  return `${minutes}分钟前`
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
+function makeFortuneAnswer(question, meta) {
+  const tags = [meta.holiday, ...meta.festivals, ...meta.terms].filter(Boolean)
+  const dayText = tags.length ? tags.join('、') : `农历${meta.lunar}`
+  if (question.includes('约会') || question.includes('见面')) return `${dayText}，适合把安排做轻一点，留点余地给聊天和吃饭。`
+  if (question.includes('学习') || question.includes('deadline')) return `${dayText}，适合先定一段 25 分钟，把最卡的点写出来。`
+  return `${dayText}，今天宜少一点解释，多一点同步。这个只是趣味提示，不做严肃判断。`
 }
 
 function formatTimer(seconds) {
