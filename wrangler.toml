@@ -1,4 +1,4 @@
-name = "yuhuangdadi"
+name = "baba-daily-workbench"
 main = "worker/index.js"
 compatibility_date = "2026-06-05"
 workers_dev = true

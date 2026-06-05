@@ -20,7 +20,7 @@ npm run deploy
 当前公开地址：
 
 ```text
-https://yuhuangdadi.puiyu051219.workers.dev
+https://baba-daily-workbench.puiyu051219.workers.dev
 ```
 
 ## 已实现
