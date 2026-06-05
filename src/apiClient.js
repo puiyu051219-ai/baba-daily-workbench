@@ -506,7 +506,7 @@ export function createDefaultWorkspace() {
     dates: [
       {
         id: createId(),
-        title: '下下次见面',
+        title: '下次见面',
         date: '2026-07-03',
         type: 'countdown',
         startTime: '18:00',
@@ -528,7 +528,7 @@ export function createDefaultWorkspace() {
       },
       {
         id: createId(),
-        title: '她的生日',
+        title: 'BBP 的生日',
         date: '2005-12-19',
         type: 'birthday',
         startTime: '',
@@ -539,7 +539,7 @@ export function createDefaultWorkspace() {
       },
       {
         id: createId(),
-        title: '我的生日',
+        title: 'BBG 的生日',
         date: '2005-06-12',
         type: 'birthday',
         startTime: '',
@@ -592,11 +592,10 @@ export function createDefaultWorkspace() {
 export function normalizeWorkspace(workspace) {
   const fallback = createDefaultWorkspace()
   const rawDates = Array.isArray(workspace?.dates) ? workspace.dates : []
-  const cleanedDates = rawDates.filter((item) => !(item?.title === '下次见面' && item?.type === 'countdown'))
   return {
     tasks: normalizeTasks(Array.isArray(workspace?.tasks) ? workspace.tasks : fallback.tasks),
     studyItems: normalizeStudyItems(Array.isArray(workspace?.studyItems) ? workspace.studyItems : fallback.studyItems),
-    dates: mergeDefaultDates(cleanedDates, fallback.dates),
+    dates: mergeDefaultDates(rawDates, fallback.dates),
     links: Array.isArray(workspace?.links) ? workspace.links : [],
     photos: Array.isArray(workspace?.photos) ? workspace.photos : [],
     journalEntries: normalizeJournalEntries(Array.isArray(workspace?.journalEntries) ? workspace.journalEntries : []),
@@ -669,7 +668,7 @@ function mergeDefaultDates(currentDates, defaultDates) {
 function normalizeDateItem(item) {
   return {
     id: item?.id || createId(),
-    title: item?.title || '倒数日',
+    title: normalizeDateTitle(item?.title),
     date: item?.date || todayString(),
     type: item?.type || 'countdown',
     startTime: item?.startTime || '',
@@ -678,6 +677,13 @@ function normalizeDateItem(item) {
     note: item?.note || '',
     createdAt: item?.createdAt || new Date().toISOString(),
   }
+}
+
+function normalizeDateTitle(title) {
+  if (title === '下下次见面') return '下次见面'
+  if (title === '她的生日') return 'BBP 的生日'
+  if (title === '我的生日') return 'BBG 的生日'
+  return title || '倒数日'
 }
 
 function createDefaultMiniGames() {
