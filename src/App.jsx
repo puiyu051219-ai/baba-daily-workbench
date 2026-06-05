@@ -1,7 +1,10 @@
 import {
   AlarmClock,
+  Bell,
+  BellOff,
   BookOpen,
   Brain,
+  Brush,
   Camera,
   CalendarPlus,
   CalendarDays,
@@ -39,6 +42,7 @@ import {
   UserPlus,
   Users,
   Wand2,
+  X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -52,6 +56,8 @@ import {
   getBackendMode,
   getGame,
   getLegalPieces,
+  getMemberKey,
+  getMemberProfile,
   getSavedLocale,
   getSavedSession,
   getWorkspace,
@@ -59,6 +65,7 @@ import {
   joinGame,
   loginAccount,
   movePiece,
+  memberProfiles,
   previewLink,
   registerAccount,
   reactToMessage,
@@ -81,6 +88,7 @@ const locales = [
   { id: 'zh-Hant-HK', label: '香港繁中' },
   { id: 'en', label: 'English' },
 ]
+const chatNotifyKey = 'baba:chat-notify'
 
 const copy = {
   'zh-Hans': {
@@ -106,7 +114,12 @@ const copy = {
     links: '私聊',
     photos: '照片墙',
     fortune: '小命理',
+    journal: '手记',
     play: '一起玩',
+    ownerAll: '共同',
+    ownerMine: '我的',
+    ownerHer: '她的',
+    ownerLabel: '归属',
     today: '今天',
     important: '重要',
     deadline: 'Deadline',
@@ -130,6 +143,22 @@ const copy = {
     photoTitle: '照片标题',
     photoUrl: '照片链接或上传',
     photoNote: '照片备注',
+    journalTitle: '标题',
+    journalBody: '写点真实的',
+    journalDiary: '日记',
+    journalGrowth: '自我成长',
+    journalInsight: '感悟',
+    notify: '消息提醒',
+    notifyOn: '提醒已开',
+    groupChat: 'BBG 与 BBP 的小群',
+    openCanvas: '全屏画画',
+    clearCanvas: '清空',
+    saveCanvas: '保存画面',
+    newPrompt: '换一个梗',
+    takeOrder: '接一单',
+    nextStep: '下一步',
+    patience: '耐心',
+    combo: '连击',
     startTime: '开始',
     endTime: '结束',
     reminder: '提醒',
@@ -198,7 +227,12 @@ const copy = {
     links: '私訊',
     photos: '相片牆',
     fortune: '小命理',
+    journal: '手記',
     play: '一齊玩',
+    ownerAll: '共同',
+    ownerMine: '我嘅',
+    ownerHer: '佢嘅',
+    ownerLabel: '歸屬',
     today: '今日',
     important: '重要',
     deadline: 'Deadline',
@@ -222,6 +256,22 @@ const copy = {
     photoTitle: '相片標題',
     photoUrl: '相片連結或上載',
     photoNote: '相片備註',
+    journalTitle: '標題',
+    journalBody: '寫低真實諗法',
+    journalDiary: '日記',
+    journalGrowth: '自我成長',
+    journalInsight: '感悟',
+    notify: '訊息提醒',
+    notifyOn: '提醒已開',
+    groupChat: 'BBG 同 BBP 嘅小群',
+    openCanvas: '全屏畫畫',
+    clearCanvas: '清空',
+    saveCanvas: '儲存畫面',
+    newPrompt: '換一個梗',
+    takeOrder: '接一單',
+    nextStep: '下一步',
+    patience: '耐心',
+    combo: '連擊',
     startTime: '開始',
     endTime: '結束',
     reminder: '提醒',
@@ -290,7 +340,12 @@ const copy = {
     links: 'Chat',
     photos: 'Photos',
     fortune: 'Fortune',
+    journal: 'Journal',
     play: 'Play',
+    ownerAll: 'Together',
+    ownerMine: 'Mine',
+    ownerHer: 'Hers',
+    ownerLabel: 'Owner',
     today: 'Today',
     important: 'Important',
     deadline: 'Deadline',
@@ -314,6 +369,22 @@ const copy = {
     photoTitle: 'Photo title',
     photoUrl: 'Photo link or upload',
     photoNote: 'Photo note',
+    journalTitle: 'Title',
+    journalBody: 'Write something real',
+    journalDiary: 'Diary',
+    journalGrowth: 'Growth',
+    journalInsight: 'Insight',
+    notify: 'Notifications',
+    notifyOn: 'Notifications on',
+    groupChat: 'BBG and BBP group',
+    openCanvas: 'Full-screen draw',
+    clearCanvas: 'Clear',
+    saveCanvas: 'Save drawing',
+    newPrompt: 'New prompt',
+    takeOrder: 'New order',
+    nextStep: 'Next step',
+    patience: 'Patience',
+    combo: 'Combo',
     startTime: 'Start',
     endTime: 'End',
     reminder: 'Reminder',
@@ -368,6 +439,7 @@ const navItems = [
   { id: 'dates', icon: CalendarDays },
   { id: 'links', icon: LinkIcon },
   { id: 'photos', icon: Camera },
+  { id: 'journal', icon: PencilLine },
   { id: 'fortune', icon: Wand2 },
   { id: 'play', icon: Gamepad2 },
 ]
@@ -708,6 +780,7 @@ function Dashboard({ session, setRoute, locale, t }) {
         {active === 'dates' ? <DatesPanel {...panelProps} /> : null}
         {active === 'links' ? <LinksPanel {...panelProps} /> : null}
         {active === 'photos' ? <PhotosPanel {...panelProps} /> : null}
+        {active === 'journal' ? <JournalPanel {...panelProps} /> : null}
         {active === 'fortune' ? <FortunePanel {...panelProps} /> : null}
         {active === 'play' ? <PlayPanel {...panelProps} /> : null}
       </section>
@@ -720,12 +793,42 @@ function StatusLine({ workspace, saving, error, t }) {
   return <p className="status-line">{saving ? t.saving : `${t.updated} ${formatShortTime(workspace.updatedAt)}`}</p>
 }
 
-function PlanPanel({ workspace, commit, t }) {
+function OwnerTabs({ active, setActive, t }) {
+  return (
+    <div className="owner-tabs">
+      {memberProfiles.map((profile) => (
+        <button className={active === profile.id ? 'active' : ''} key={profile.id} onClick={() => setActive(profile.id)}>
+          <span>{profile.avatar}</span>
+          {profile.id === 'both' ? t.ownerAll : profile.name}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function OwnerSelect({ value, onChange, t }) {
+  return (
+    <label className="owner-select">
+      <span>{t.ownerLabel}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        {memberProfiles.map((profile) => (
+          <option key={profile.id} value={profile.id}>
+            {profile.avatar} {profile.id === 'both' ? t.ownerAll : profile.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function PlanPanel({ workspace, commit, session, t }) {
   const [list, setList] = useState('today')
+  const [owner, setOwner] = useState(getMemberKey(session.user.username))
   const [title, setTitle] = useState('')
   const [dueDate, setDueDate] = useState(todayString())
 
   const filtered = workspace.tasks.filter((task) => {
+    if (task.owner !== owner) return false
     if (list === 'all') return true
     if (list === 'important') return task.important
     return task.list === list
@@ -740,6 +843,7 @@ function PlanPanel({ workspace, commit, t }) {
         id: createClientId(),
         title: title.trim(),
         list: targetList,
+        owner,
         dueDate,
         done: false,
         important: targetList === 'important',
@@ -756,6 +860,7 @@ function PlanPanel({ workspace, commit, t }) {
         id: createClientId(),
         title: label,
         list: list === 'all' || list === 'important' ? 'today' : list,
+        owner,
         dueDate: todayString(),
         done: false,
         important: list === 'important',
@@ -768,10 +873,11 @@ function PlanPanel({ workspace, commit, t }) {
   return (
     <div className="tool-grid plan-grid">
       <div className="list-tabs">
+        <OwnerTabs active={owner} setActive={setOwner} t={t} />
         {taskLists.map((id) => (
           <button className={list === id ? 'active' : ''} key={id} onClick={() => setList(id)}>
             {t[id]}
-            <span>{countForList(workspace.tasks, id)}</span>
+            <span>{countForList(workspace.tasks.filter((task) => task.owner === owner), id)}</span>
           </button>
         ))}
       </div>
@@ -779,6 +885,7 @@ function PlanPanel({ workspace, commit, t }) {
         <form className="inline-form" onSubmit={addTask}>
           <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t.taskPlaceholder} />
           <input value={dueDate} onChange={(event) => setDueDate(event.target.value)} type="date" />
+          <OwnerSelect value={owner} onChange={setOwner} t={t} />
           <button type="submit">
             <Plus size={18} />
             {t.add}
@@ -804,6 +911,7 @@ function PlanPanel({ workspace, commit, t }) {
 
 function TaskRow({ task, commit, t }) {
   const due = dateDistance(task.dueDate)
+  const owner = getMemberProfile(task.owner)
   return (
     <article className={`task-row ${task.done ? 'done' : ''}`}>
       <button
@@ -821,6 +929,7 @@ function TaskRow({ task, commit, t }) {
       <div>
         <strong>{task.title}</strong>
         <p>
+          <span className="mini-owner">{owner.avatar} {owner.name}</span>
           {task.dueDate || t.dueDate}
           {due ? ` · ${due}` : ''}
         </p>
@@ -841,10 +950,12 @@ function TaskRow({ task, commit, t }) {
   )
 }
 
-function StudyPanel({ workspace, commit, t }) {
+function StudyPanel({ workspace, commit, session, t }) {
+  const [owner, setOwner] = useState(getMemberKey(session.user.username))
   const [course, setCourse] = useState('')
   const [title, setTitle] = useState('')
   const [note, setNote] = useState('')
+  const filtered = workspace.studyItems.filter((item) => item.owner === owner)
 
   const addStudy = async (event) => {
     event.preventDefault()
@@ -854,6 +965,7 @@ function StudyPanel({ workspace, commit, t }) {
         id: createClientId(),
         course: course.trim() || t.course,
         title: title.trim(),
+        owner,
         note: note.trim(),
         done: false,
         minutes: 25,
@@ -877,6 +989,7 @@ function StudyPanel({ workspace, commit, t }) {
         id: createClientId(),
         course: item.course,
         title: item.title,
+        owner,
         note: item.note,
         done: false,
         minutes: 25,
@@ -888,11 +1001,13 @@ function StudyPanel({ workspace, commit, t }) {
 
   return (
     <div className="tool-panel">
+      <OwnerTabs active={owner} setActive={setOwner} t={t} />
       <form className="stack-form" onSubmit={addStudy}>
         <div className="two-fields">
           <input value={course} onChange={(event) => setCourse(event.target.value)} placeholder={t.course} />
           <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t.studyTitle} />
         </div>
+        <OwnerSelect value={owner} onChange={setOwner} t={t} />
         <input value={note} onChange={(event) => setNote(event.target.value)} placeholder={t.note} />
         <button type="submit">
           <Plus size={18} />
@@ -908,9 +1023,11 @@ function StudyPanel({ workspace, commit, t }) {
         ))}
       </div>
       <div className="card-grid">
-        {workspace.studyItems.map((item) => (
+        {filtered.map((item) => {
+          const profile = getMemberProfile(item.owner)
+          return (
           <article className={`study-card ${item.done ? 'done' : ''}`} key={item.id}>
-            <span>{item.course}</span>
+            <span>{profile.avatar} {profile.name} · {item.course}</span>
             <h3>{item.title}</h3>
             <p>{item.note || ' '}</p>
             <button
@@ -926,8 +1043,88 @@ function StudyPanel({ workspace, commit, t }) {
               {item.done ? t.done : t.markDone}
             </button>
           </article>
-        ))}
+          )
+        })}
       </div>
+    </div>
+  )
+}
+
+function JournalPanel({ workspace, commit, session, t }) {
+  const [owner, setOwner] = useState(getMemberKey(session.user.username))
+  const [type, setType] = useState('diary')
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [mood, setMood] = useState('🙂')
+  const entries = (workspace.journalEntries || []).filter((entry) => entry.owner === owner)
+  const typeLabels = {
+    diary: t.journalDiary,
+    growth: t.journalGrowth,
+    insight: t.journalInsight,
+  }
+
+  const addEntry = async (event) => {
+    event.preventDefault()
+    if (!title.trim() && !body.trim()) return
+    await commit((draft) => {
+      draft.journalEntries = [
+        {
+          id: createClientId(),
+          owner,
+          type,
+          title: title.trim() || typeLabels[type],
+          body: body.trim(),
+          mood,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        ...(draft.journalEntries || []),
+      ]
+      return draft
+    })
+    setTitle('')
+    setBody('')
+  }
+
+  return (
+    <div className="journal-layout">
+      <section className="tool-panel">
+        <OwnerTabs active={owner} setActive={setOwner} t={t} />
+        <form className="stack-form journal-form" onSubmit={addEntry}>
+          <div className="two-fields">
+            <select value={type} onChange={(event) => setType(event.target.value)}>
+              <option value="diary">{t.journalDiary}</option>
+              <option value="growth">{t.journalGrowth}</option>
+              <option value="insight">{t.journalInsight}</option>
+            </select>
+            <select value={mood} onChange={(event) => setMood(event.target.value)}>
+              {['🙂', '🥹', '😤', '😴', '🔥', '🌧️', '🌷'].map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
+          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t.journalTitle} />
+          <textarea value={body} onChange={(event) => setBody(event.target.value)} placeholder={t.journalBody} rows="6" />
+          <button type="submit">
+            <PencilLine size={18} />
+            {t.add}
+          </button>
+        </form>
+      </section>
+      <section className="journal-list">
+        {entries.map((entry) => {
+          const profile = getMemberProfile(entry.owner)
+          return (
+            <article className="journal-card" key={entry.id}>
+              <span>{entry.mood || profile.avatar} {typeLabels[entry.type] || entry.type} · {formatShortTime(entry.createdAt)}</span>
+              <h3>{entry.title}</h3>
+              <p>{entry.body || ' '}</p>
+            </article>
+          )
+        })}
+      </section>
     </div>
   )
 }
@@ -1132,16 +1329,24 @@ function LinksPanel({ session, t }) {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [notifyEnabled, setNotifyEnabled] = useState(() => localStorage.getItem(chatNotifyKey) === '1')
+  const seenMessageRef = useRef('')
 
   const refreshChat = useCallback(async () => {
     try {
       const data = await getChat()
+      const messages = data.chat.messages || []
+      const latest = messages[messages.length - 1]
+      if (latest && seenMessageRef.current && latest.id !== seenMessageRef.current && latest.userId !== session.user.id) {
+        showChatNotification(latest, notifyEnabled)
+      }
+      if (latest) seenMessageRef.current = latest.id
       setChat(data.chat)
       setError('')
     } catch (chatError) {
       setError(chatError.message)
     }
-  }, [])
+  }, [notifyEnabled, session.user.id])
 
   useEffect(() => {
     refreshChat()
@@ -1180,20 +1385,47 @@ function LinksPanel({ session, t }) {
     setChat(data.chat)
   }
 
+  const toggleNotify = async () => {
+    if (!('Notification' in window)) {
+      setError('这个浏览器暂时不支持消息提醒')
+      return
+    }
+    if (!notifyEnabled && Notification.permission !== 'granted') {
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') return
+    }
+    const next = !notifyEnabled
+    setNotifyEnabled(next)
+    localStorage.setItem(chatNotifyKey, next ? '1' : '0')
+  }
+
   return (
     <div className="chat-shell">
       <div className="chat-header">
         <div>
           <span className="eyebrow">
             <MessageCircle size={18} />
-            {t.links}
+            {t.groupChat}
           </span>
           <h2>{t.streak} {chat?.streak || 0}</h2>
+          <div className="chat-members">
+            {(chat?.members || memberProfiles.filter((profile) => profile.id !== 'both')).map((profile) => (
+              <span key={profile.id}>
+                {profile.avatar} {profile.name}
+              </span>
+            ))}
+          </div>
         </div>
-        <button className="streak-button" onClick={checkIn}>
-          <Sparkles size={17} />
-          {t.checkIn}
-        </button>
+        <div className="chat-actions">
+          <button className="streak-button" onClick={toggleNotify}>
+            {notifyEnabled ? <Bell size={17} /> : <BellOff size={17} />}
+            {notifyEnabled ? t.notifyOn : t.notify}
+          </button>
+          <button className="streak-button" onClick={checkIn}>
+            <Sparkles size={17} />
+            {t.checkIn}
+          </button>
+        </div>
       </div>
       <div className="message-list">
         {(chat?.messages || []).map((message) => (
@@ -1216,7 +1448,7 @@ function MessageBubble({ message, mine, onReact, t }) {
   return (
     <article className={`message-bubble ${mine ? 'mine' : ''}`}>
       <div className="message-meta">
-        <span>{message.displayName}</span>
+        <span className="bubble-name"><b>{message.avatar || '✨'}</b>{message.displayName}</span>
         <time>{formatShortTime(message.createdAt)}</time>
       </div>
       <p>{message.text}</p>
@@ -1440,33 +1672,69 @@ function PlayPanel({ workspace, commit, session, setRoute, t }) {
 
 function KitchenGame({ workspace, commit, session, t }) {
   const [, setTick] = useState(Date.now())
-  const kitchen = workspace.miniGames?.kitchen || { menu: [], orders: [], score: 0 }
+  const kitchen = workspace.miniGames?.kitchen || { menu: [], orders: [], score: 0, combo: 0, customers: [] }
 
   useEffect(() => {
     const timer = window.setInterval(() => setTick(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [])
 
-  const startDish = async (dish) => {
+  const takeOrder = async () => {
     await commit((draft) => {
+      const game = draft.miniGames.kitchen
+      const dish = game.menu[(game.orders.length + game.ticketsDone) % game.menu.length]
+      const customer = game.customers[(game.orders.length + game.score) % game.customers.length]
       draft.miniGames.kitchen.orders.unshift({
         id: createClientId(),
+        dishId: dish.id,
         name: dish.name,
+        emoji: dish.emoji,
         points: dish.points,
+        customer,
         by: session.user.displayName,
-        readyAt: new Date(Date.now() + dish.seconds * 1000).toISOString(),
+        stepIndex: 0,
+        readyAt: '',
+        status: 'waiting',
         served: false,
+        patienceUntil: new Date(Date.now() + 90000).toISOString(),
+        createdAt: new Date().toISOString(),
       })
       return draft
     })
   }
 
-  const serveDish = async (orderId) => {
+  const startStep = async (orderId) => {
     await commit((draft) => {
+      const game = draft.miniGames.kitchen
       const order = draft.miniGames.kitchen.orders.find((item) => item.id === orderId)
-      if (order && !order.served) {
+      const dish = game.menu.find((item) => item.id === order?.dishId)
+      const step = dish?.steps?.[order?.stepIndex || 0]
+      if (!order || !dish || !step || order.status === 'cooking' || order.served) return draft
+      order.status = 'cooking'
+      order.readyAt = new Date(Date.now() + step.seconds * 1000).toISOString()
+      return draft
+    })
+  }
+
+  const finishStep = async (orderId) => {
+    await commit((draft) => {
+      const game = draft.miniGames.kitchen
+      const order = game.orders.find((item) => item.id === orderId)
+      const dish = game.menu.find((item) => item.id === order?.dishId)
+      const canFinish = order?.status === 'ready' || (order?.status === 'cooking' && order.readyAt && new Date(order.readyAt) <= new Date())
+      if (!order || !dish || !canFinish) return draft
+      const isLast = order.stepIndex >= dish.steps.length - 1
+      if (isLast) {
+        const late = new Date(order.patienceUntil) < new Date()
+        order.status = 'served'
         order.served = true
-        draft.miniGames.kitchen.score += order.points || 1
+        game.combo = late ? 0 : (game.combo || 0) + 1
+        game.score += Math.max(1, (order.points || 1) + Math.min(game.combo, 5) - (late ? 2 : 0))
+        game.ticketsDone = (game.ticketsDone || 0) + 1
+      } else {
+        order.stepIndex += 1
+        order.status = 'waiting'
+        order.readyAt = ''
       }
       return draft
     })
@@ -1478,27 +1746,41 @@ function KitchenGame({ workspace, commit, session, t }) {
         <Utensils size={17} />
         {t.kitchen}
       </span>
-      <h3>{kitchen.score} 分</h3>
-      <div className="menu-row">
+      <h3>{kitchen.score} 分 · {t.combo} {kitchen.combo || 0}</h3>
+      <div className="menu-row kitchen-menu">
+        <button className="primary-button" onClick={takeOrder}>
+          <Plus size={16} />
+          {t.takeOrder}
+        </button>
         {kitchen.menu.map((dish) => (
-          <button key={dish.id} onClick={() => startDish(dish)}>
-            {dish.name}
-            <small>{dish.seconds}s</small>
-          </button>
+          <span key={dish.id}>{dish.emoji} {dish.name}</span>
         ))}
       </div>
       <div className="order-list">
         {kitchen.orders.slice(0, 5).map((order) => {
-          const left = Math.max(0, Math.ceil((new Date(order.readyAt) - Date.now()) / 1000))
-          const ready = left === 0
+          const dish = kitchen.menu.find((item) => item.id === order.dishId) || kitchen.menu[0]
+          const step = dish?.steps?.[order.stepIndex || 0]
+          const left = order.readyAt ? Math.max(0, Math.ceil((new Date(order.readyAt) - Date.now()) / 1000)) : 0
+          const patienceLeft = Math.max(0, Math.ceil((new Date(order.patienceUntil) - Date.now()) / 1000))
+          const ready = order.status === 'cooking' && left === 0
+          const status = ready ? 'ready' : order.status
           return (
-            <article className={order.served ? 'served' : ready ? 'ready' : ''} key={order.id}>
-              <strong>{order.name}</strong>
-              <span>{order.served ? t.done : ready ? t.ready : `${t.cooking} ${left}s`}</span>
-              {!order.served && ready ? (
-                <button onClick={() => serveDish(order.id)}>
+            <article className={order.served ? 'served' : status === 'ready' ? 'ready' : ''} key={order.id}>
+              <strong>{order.emoji} {order.customer}: {order.name}</strong>
+              <span>
+                {order.served
+                  ? t.done
+                  : status === 'cooking'
+                    ? `${step?.label || t.cooking} ${left}s`
+                    : `${step?.label || t.ready} · ${t.patience} ${patienceLeft}s`}
+              </span>
+              {!order.served && status !== 'cooking' && status !== 'ready' ? (
+                <button onClick={() => startStep(order.id)}>{step?.label || t.start}</button>
+              ) : null}
+              {!order.served && status === 'ready' ? (
+                <button onClick={() => finishStep(order.id)}>
                   <Check size={15} />
-                  {t.serve}
+                  {order.stepIndex >= (dish?.steps?.length || 1) - 1 ? t.serve : t.nextStep}
                 </button>
               ) : null}
             </article>
@@ -1511,8 +1793,24 @@ function KitchenGame({ workspace, commit, session, t }) {
 
 function DrawGuessGame({ workspace, commit, session, t }) {
   const [guess, setGuess] = useState('')
-  const game = workspace.miniGames?.drawGuess || { prompt: '', guesses: [] }
-  const prompts = ['猫咪开飞机', '会跳舞的奶茶', '下雨天的火锅', '生气的闹钟', '戴墨镜的月亮']
+  const [drawing, setDrawing] = useState(false)
+  const canvasRef = useRef(null)
+  const drawingRef = useRef(false)
+  const game = workspace.miniGames?.drawGuess || { prompt: '', guesses: [], image: '' }
+  const prompts = [
+    '公主请上车',
+    '尊嘟假嘟',
+    '显眼包在茶餐厅',
+    'City 不 City',
+    '麦门信徒排队',
+    'i 人被迫社交',
+    '八八婆审判八八公',
+    'Chill Guy 返工等放工',
+    '食咗饭未',
+    '小红书突然泼天富贵',
+    '港铁迷路但装作很熟',
+    '奶茶续命失败',
+  ]
 
   const nextPrompt = async () => {
     await commit((draft) => {
@@ -1520,9 +1818,47 @@ function DrawGuessGame({ workspace, commit, session, t }) {
       const next = prompts[(prompts.indexOf(current) + 1 + prompts.length) % prompts.length]
       draft.miniGames.drawGuess.prompt = next
       draft.miniGames.drawGuess.drawer = session.user.displayName
+      draft.miniGames.drawGuess.image = ''
       draft.miniGames.drawGuess.guesses = []
+      draft.miniGames.drawGuess.round = (draft.miniGames.drawGuess.round || 1) + 1
       return draft
     })
+  }
+
+  const openCanvas = () => {
+    setDrawing(true)
+    window.setTimeout(() => prepareCanvas(canvasRef.current, game.image), 80)
+  }
+
+  const saveCanvas = async () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const image = canvas.toDataURL('image/png')
+    await commit((draft) => {
+      draft.miniGames.drawGuess.image = image
+      draft.miniGames.drawGuess.drawer = session.user.displayName
+      return draft
+    })
+    setDrawing(false)
+  }
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current
+    const context = canvas?.getContext('2d')
+    if (!canvas || !context) return
+    context.fillStyle = '#fffaf0'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+  }
+
+  const startDraw = (event) => {
+    drawingRef.current = true
+    drawPoint(canvasRef.current, event, true)
+  }
+
+  const moveDraw = (event) => {
+    if (!drawingRef.current) return
+    event.preventDefault()
+    drawPoint(canvasRef.current, event)
   }
 
   const submitGuess = async (event) => {
@@ -1543,14 +1879,18 @@ function DrawGuessGame({ workspace, commit, session, t }) {
   return (
     <section className="mini-game-card">
       <span className="eyebrow">
-        <PencilLine size={17} />
+        <Brush size={17} />
         {t.drawGuess}
       </span>
       <h3>{game.prompt}</h3>
       <div className="doodle-box">
-        <PencilLine size={34} />
-        <span>画在纸上，答案在这里同步</span>
+        {game.image ? <img alt="" src={game.image} /> : <Brush size={34} />}
+        <span>{game.image ? `${game.drawer || session.user.displayName} 的画` : t.openCanvas}</span>
       </div>
+      <button className="primary-button" onClick={openCanvas}>
+        <Brush size={16} />
+        {t.openCanvas}
+      </button>
       <form className="mini-form" onSubmit={submitGuess}>
         <input value={guess} onChange={(event) => setGuess(event.target.value)} placeholder={t.guess} />
         <button type="submit">
@@ -1563,6 +1903,29 @@ function DrawGuessGame({ workspace, commit, session, t }) {
           <p key={item.id}>{item.by}: {item.text}</p>
         ))}
       </div>
+      {drawing ? (
+        <div className="draw-overlay">
+          <div className="draw-toolbar">
+            <strong>{game.prompt}</strong>
+            <button onClick={clearCanvas}>{t.clearCanvas}</button>
+            <button onClick={saveCanvas}>{t.saveCanvas}</button>
+            <button onClick={() => setDrawing(false)}>
+              <X size={18} />
+            </button>
+          </div>
+          <canvas
+            ref={canvasRef}
+            onPointerDown={startDraw}
+            onPointerLeave={() => {
+              drawingRef.current = false
+            }}
+            onPointerMove={moveDraw}
+            onPointerUp={() => {
+              drawingRef.current = false
+            }}
+          />
+        </div>
+      ) : null}
     </section>
   )
 }
@@ -1612,6 +1975,10 @@ function RiddleGame({ workspace, commit, session, t }) {
     { question: '什么门永远关不上？', answer: '球门' },
     { question: '什么东西越生气越大？', answer: '脾气' },
     { question: '什么东西明明是你的，别人用得最多？', answer: '名字' },
+    { question: '什么人最适合 City walk？', answer: '找不到路但嘴硬的人' },
+    { question: '八八公什么时候最像 AI？', answer: '解释太多的时候' },
+    { question: '什么包不能背，但很显眼？', answer: '显眼包' },
+    { question: '什么茶越喝越想续命？', answer: '冻柠茶' },
   ]
 
   const submitGuess = async (event) => {
@@ -1976,6 +2343,52 @@ function readFileAsDataUrl(file) {
     reader.onerror = () => reject(reader.error)
     reader.readAsDataURL(file)
   })
+}
+
+function showChatNotification(message, enabled) {
+  if (!enabled || !('Notification' in window) || Notification.permission !== 'granted') return
+  const title = `${message.avatar || '✨'} ${message.displayName || '新消息'}`
+  const body = message.text?.slice(0, 80) || '发来一条消息'
+  if (navigator.serviceWorker?.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'chat-notification', title, body })
+    return
+  }
+  new Notification(title, { body, icon: '/icon.svg' })
+}
+
+function prepareCanvas(canvas, image) {
+  if (!canvas) return
+  const rect = canvas.getBoundingClientRect()
+  const ratio = window.devicePixelRatio || 1
+  canvas.width = Math.max(320, Math.floor(rect.width * ratio))
+  canvas.height = Math.max(420, Math.floor(rect.height * ratio))
+  const context = canvas.getContext('2d')
+  context.setTransform(ratio, 0, 0, ratio, 0, 0)
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  context.lineWidth = 6
+  context.strokeStyle = '#152f2a'
+  context.fillStyle = '#fffaf0'
+  context.fillRect(0, 0, rect.width, rect.height)
+  if (!image) return
+  const picture = new Image()
+  picture.onload = () => context.drawImage(picture, 0, 0, rect.width, rect.height)
+  picture.src = image
+}
+
+function drawPoint(canvas, event, start = false) {
+  if (!canvas) return
+  const context = canvas.getContext('2d')
+  const rect = canvas.getBoundingClientRect()
+  const x = event.clientX - rect.left
+  const y = event.clientY - rect.top
+  if (start) {
+    context.beginPath()
+    context.moveTo(x, y)
+    return
+  }
+  context.lineTo(x, y)
+  context.stroke()
 }
 
 function makeFortuneAnswer(question, meta) {

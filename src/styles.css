@@ -476,6 +476,53 @@ select {
   display: none;
 }
 
+.owner-tabs {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.owner-tabs button,
+.owner-select {
+  background: #f4efe5;
+  border: 1px solid #e1d8c8;
+  color: #40504b;
+}
+
+.owner-tabs button.active {
+  background: #2f7772;
+  color: #fffaf0;
+}
+
+.owner-tabs button span {
+  font-size: 18px;
+}
+
+.owner-select {
+  align-items: center;
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  grid-template-columns: auto minmax(110px, 1fr);
+  min-height: 42px;
+  padding: 4px 8px;
+}
+
+.owner-select span,
+.mini-owner {
+  color: #2f7772;
+  font-size: 12px;
+  font-weight: 800;
+  margin-right: 8px;
+}
+
+.owner-select select {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
 .task-row {
   align-items: center;
   background: #fffdf7;
@@ -597,6 +644,52 @@ select {
   gap: 6px;
   margin-top: 10px;
   text-decoration: none;
+}
+
+.journal-layout {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+}
+
+.journal-form textarea {
+  background: #fffdf7;
+  border: 1px solid #d8cfbf;
+  border-radius: 8px;
+  color: #1d2523;
+  font: inherit;
+  padding: 12px;
+  resize: vertical;
+}
+
+.journal-list {
+  display: grid;
+  gap: 12px;
+}
+
+.journal-card {
+  background: #fffdf7;
+  border: 1px solid #e1d8c8;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.journal-card span {
+  color: #2f7772;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.journal-card h3 {
+  color: #1d2523;
+  margin: 8px 0;
+}
+
+.journal-card p {
+  color: #4d5a56;
+  line-height: 1.7;
+  margin: 0;
+  white-space: pre-wrap;
 }
 
 .timer-layout,
@@ -724,6 +817,34 @@ select {
 .streak-button {
   background: #fff4cc;
   color: #60470c;
+}
+
+.chat-actions,
+.chat-members {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chat-members span {
+  background: #e9f1ec;
+  border-radius: 999px;
+  color: #285c45;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 9px;
+}
+
+.bubble-name {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.bubble-name b {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .message-list {
@@ -899,6 +1020,23 @@ select {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.kitchen-menu {
+  align-items: stretch;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.kitchen-menu span {
+  align-items: center;
+  background: #eef3ef;
+  border-radius: 8px;
+  color: #285c45;
+  display: flex;
+  font-size: 13px;
+  font-weight: 800;
+  min-height: 42px;
+  padding: 8px;
+}
+
 .menu-row button {
   align-items: start;
   background: #fff4cc;
@@ -923,6 +1061,15 @@ select {
   padding: 9px;
 }
 
+.order-list article {
+  display: grid;
+  gap: 8px;
+}
+
+.order-list article strong {
+  color: #1d2523;
+}
+
 .order-list article.ready {
   background: #e4f4de;
 }
@@ -941,6 +1088,47 @@ select {
   gap: 10px;
   min-height: 96px;
   padding: 14px;
+}
+
+.doodle-box img {
+  background: #fffaf0;
+  border-radius: 8px;
+  max-height: 170px;
+  object-fit: contain;
+  width: 100%;
+}
+
+.draw-overlay {
+  background: #f6f3eb;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  inset: 0;
+  padding: 12px;
+  position: fixed;
+  z-index: 50;
+}
+
+.draw-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  padding-bottom: 10px;
+}
+
+.draw-toolbar strong {
+  color: #1d2523;
+  font-size: clamp(20px, 4vw, 32px);
+}
+
+.draw-overlay canvas {
+  background: #fffaf0;
+  border: 1px solid #d8cfbf;
+  border-radius: 8px;
+  height: 100%;
+  touch-action: none;
+  width: 100%;
 }
 
 .answer-line {
@@ -1210,6 +1398,7 @@ select {
   .plan-grid,
   .timer-layout,
   .play-panel,
+  .journal-layout,
   .game-layout {
     grid-template-columns: 1fr;
   }
@@ -1288,6 +1477,16 @@ select {
   .chat-composer,
   .message-link-card {
     grid-template-columns: 1fr;
+  }
+
+  .owner-tabs,
+  .kitchen-menu {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-header {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .tool-panel,

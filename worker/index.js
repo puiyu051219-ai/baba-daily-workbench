@@ -3,6 +3,7 @@ import {
   createInitialGame,
   createDefaultWorkspace,
   getLegalPieces,
+  getMemberProfile,
   joinGameState,
   normalizeChat,
   normalizeWorkspace,
@@ -101,7 +102,7 @@ export class YuhuangHub {
     const user = {
       id: crypto.randomUUID(),
       username: normalized,
-      displayName: String(displayName || normalized).trim().slice(0, 18),
+      displayName: String(displayName || getMemberProfile(normalized).name || normalized).trim().slice(0, 18),
       passwordHash: await hashPassword(password),
       createdAt: new Date().toISOString(),
     }
@@ -141,6 +142,8 @@ export class YuhuangHub {
       id: crypto.randomUUID().slice(0, 8),
       userId: user.id,
       displayName: user.displayName,
+      username: user.username,
+      avatar: getMemberProfile(user.username).avatar,
       text: messageText,
       card: url ? await previewExternalLink(url).then((data) => data.card) : null,
       reactions: {},
@@ -187,6 +190,7 @@ export class YuhuangHub {
         id: user.id,
         username: user.username,
         displayName: user.displayName,
+        avatar: getMemberProfile(user.username).avatar,
       },
     }
   }
@@ -201,7 +205,7 @@ export class YuhuangHub {
     const users = (await this.state.storage.get('users')) || {}
     const user = users[session.username]
     if (!user) throw new ApiError('账号不存在', 401)
-    return { id: user.id, username: user.username, displayName: user.displayName }
+    return { id: user.id, username: user.username, displayName: user.displayName, avatar: getMemberProfile(user.username).avatar }
   }
 
   async createGame(user) {

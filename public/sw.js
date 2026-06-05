@@ -1,4 +1,4 @@
-const CACHE_NAME = 'baba-workbench-v3'
+const CACHE_NAME = 'baba-workbench-v4'
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icon.svg']
 
 self.addEventListener('install', (event) => {
@@ -24,4 +24,13 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => caches.match(event.request).then((cached) => cached || caches.match('/'))),
   )
+})
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'chat-notification') return
+  self.registration.showNotification(event.data.title || '新消息', {
+    body: event.data.body || '',
+    icon: '/icon.svg',
+    badge: '/icon.svg',
+  })
 })

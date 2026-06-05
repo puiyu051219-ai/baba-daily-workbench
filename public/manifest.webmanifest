@@ -1,7 +1,7 @@
 {
   "name": "八八婆和八八公的日常工作台",
   "short_name": "八八日常",
-  "description": "任务、学习、番茄钟、倒数日、私聊、照片墙、小命理和一起玩的小游戏。",
+  "description": "分开的任务、学习、手记、私聊、照片墙、小命理和一起玩的小游戏。",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f6f3eb",

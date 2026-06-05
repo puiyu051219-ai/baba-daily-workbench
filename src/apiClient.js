@@ -8,6 +8,12 @@ const localWorkspacesKey = 'yhd:local-workspaces'
 const localChatKey = 'yhd:local-chat'
 const localBackend = { known: false, online: false }
 
+export const memberProfiles = [
+  { id: 'BBG', username: 'BBG', name: '八八公', avatar: '🦁', role: 'bbg' },
+  { id: 'BBP', username: 'BBP', name: '潘进进', avatar: '🌷', role: 'bbp' },
+  { id: 'both', username: 'both', name: '共同', avatar: '✨', role: 'both' },
+]
+
 const colors = [
   { id: 'red', name: '赤霄', emoji: '火', start: 0 },
   { id: 'blue', name: '玄水', emoji: '水', start: 14 },
@@ -17,6 +23,18 @@ const colors = [
 
 const trackLength = 56
 const homeLength = 6
+
+export function getMemberKey(value) {
+  const normalized = String(value || '').trim().toUpperCase()
+  if (normalized === 'BBG') return 'BBG'
+  if (normalized === 'BBP') return 'BBP'
+  return 'both'
+}
+
+export function getMemberProfile(value) {
+  const key = getMemberKey(value)
+  return memberProfiles.find((profile) => profile.id === key) || memberProfiles[2]
+}
 
 export function getSavedSession() {
   try {
@@ -251,7 +269,7 @@ function localRegister({ username, password, displayName, inviteCode }) {
   const user = {
     id: `u_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     username: normalized,
-    displayName: displayName?.trim() || normalized,
+    displayName: displayName?.trim() || getMemberProfile(normalized).name || normalized,
     password,
   }
   users[normalized] = user
@@ -366,6 +384,8 @@ function localSendChatMessage({ text }) {
     id: createId(),
     userId: user.id,
     displayName: user.displayName,
+    username: user.username,
+    avatar: getMemberProfile(user.username).avatar,
     text: messageText,
     card: url ? localPreviewLink(url) : null,
     reactions: {},
@@ -401,6 +421,7 @@ export function createDefaultWorkspace() {
         id: createId(),
         title: '规划今天的三件事',
         list: 'today',
+        owner: 'BBG',
         dueDate: todayString(),
         done: false,
         important: true,
@@ -408,8 +429,9 @@ export function createDefaultWorkspace() {
       },
       {
         id: createId(),
-        title: '把下一个 deadline 放进来',
+        title: '把她下一个 deadline 放进来',
         list: 'deadline',
+        owner: 'BBP',
         dueDate: '',
         done: false,
         important: false,
@@ -419,6 +441,7 @@ export function createDefaultWorkspace() {
         id: createId(),
         title: '晚上一起同步一下安排',
         list: 'today',
+        owner: 'both',
         dueDate: todayString(),
         done: false,
         important: false,
@@ -430,6 +453,7 @@ export function createDefaultWorkspace() {
         id: createId(),
         course: '课程',
         title: '整理一张复习卡',
+        owner: 'BBG',
         note: '用自己的话解释一个概念',
         done: false,
         minutes: 25,
@@ -439,6 +463,7 @@ export function createDefaultWorkspace() {
         id: createId(),
         course: '课程',
         title: '把今天不会的点记下来',
+        owner: 'BBP',
         note: '晚点再一起看',
         done: false,
         minutes: 25,
@@ -515,6 +540,7 @@ export function createDefaultWorkspace() {
     ],
     links: [],
     photos: [],
+    journalEntries: [],
     fortune: { notes: [] },
     quickTasks: ['规划一天', '复习 25 分钟', '整理 deadline', '喝水休息', '晚上同步安排'],
     miniGames: createDefaultMiniGames(),
@@ -535,11 +561,12 @@ export function normalizeWorkspace(workspace) {
   const rawDates = Array.isArray(workspace?.dates) ? workspace.dates : []
   const cleanedDates = rawDates.filter((item) => !(item?.title === '下次见面' && item?.type === 'countdown'))
   return {
-    tasks: Array.isArray(workspace?.tasks) ? workspace.tasks : fallback.tasks,
-    studyItems: Array.isArray(workspace?.studyItems) ? workspace.studyItems : fallback.studyItems,
+    tasks: normalizeTasks(Array.isArray(workspace?.tasks) ? workspace.tasks : fallback.tasks),
+    studyItems: normalizeStudyItems(Array.isArray(workspace?.studyItems) ? workspace.studyItems : fallback.studyItems),
     dates: mergeDefaultDates(cleanedDates, fallback.dates),
     links: Array.isArray(workspace?.links) ? workspace.links : [],
     photos: Array.isArray(workspace?.photos) ? workspace.photos : [],
+    journalEntries: normalizeJournalEntries(Array.isArray(workspace?.journalEntries) ? workspace.journalEntries : []),
     fortune: {
       notes: Array.isArray(workspace?.fortune?.notes) ? workspace.fortune.notes : [],
     },
@@ -555,6 +582,48 @@ export function normalizeWorkspace(workspace) {
     },
     updatedAt: workspace?.updatedAt || new Date().toISOString(),
   }
+}
+
+function normalizeTasks(tasks) {
+  return tasks.map((task) => ({
+    ...task,
+    id: task?.id || createId(),
+    title: task?.title || '新任务',
+    list: task?.list || 'today',
+    owner: getMemberKey(task?.owner || task?.assignee || task?.user || 'both'),
+    dueDate: task?.dueDate || '',
+    done: Boolean(task?.done),
+    important: Boolean(task?.important),
+    createdAt: task?.createdAt || new Date().toISOString(),
+  }))
+}
+
+function normalizeStudyItems(items) {
+  return items.map((item) => ({
+    ...item,
+    id: item?.id || createId(),
+    course: item?.course || '课程',
+    title: item?.title || '学习任务',
+    owner: getMemberKey(item?.owner || item?.assignee || item?.user || 'both'),
+    note: item?.note || '',
+    done: Boolean(item?.done),
+    minutes: validNumber(item?.minutes, 25),
+    createdAt: item?.createdAt || new Date().toISOString(),
+  }))
+}
+
+function normalizeJournalEntries(entries) {
+  return entries.map((entry) => ({
+    ...entry,
+    id: entry?.id || createId(),
+    owner: getMemberKey(entry?.owner || 'both'),
+    type: entry?.type || 'diary',
+    title: entry?.title || '今天写点什么',
+    body: entry?.body || '',
+    mood: entry?.mood || '',
+    createdAt: entry?.createdAt || new Date().toISOString(),
+    updatedAt: entry?.updatedAt || entry?.createdAt || new Date().toISOString(),
+  }))
 }
 
 function mergeDefaultDates(currentDates, defaultDates) {
@@ -582,17 +651,63 @@ function createDefaultMiniGames() {
   return {
     kitchen: {
       score: 0,
+      combo: 0,
+      ticketsDone: 0,
       orders: [],
       menu: [
-        { id: 'toast', name: '芝士吐司', seconds: 18, points: 2 },
-        { id: 'noodle', name: '番茄意面', seconds: 28, points: 4 },
-        { id: 'tea', name: '柠檬茶', seconds: 12, points: 1 },
+        {
+          id: 'toast',
+          name: '芝士吐司',
+          emoji: '🧀',
+          points: 3,
+          steps: [
+            { id: 'toast', label: '烤面包', seconds: 8 },
+            { id: 'cheese', label: '铺芝士', seconds: 6 },
+            { id: 'plate', label: '摆盘', seconds: 4 },
+          ],
+        },
+        {
+          id: 'noodle',
+          name: '番茄意面',
+          emoji: '🍝',
+          points: 6,
+          steps: [
+            { id: 'boil', label: '煮面', seconds: 10 },
+            { id: 'sauce', label: '炒酱', seconds: 8 },
+            { id: 'mix', label: '拌匀', seconds: 5 },
+          ],
+        },
+        {
+          id: 'tea',
+          name: '冻柠茶',
+          emoji: '🍋',
+          points: 4,
+          steps: [
+            { id: 'tea', label: '冲茶', seconds: 7 },
+            { id: 'lemon', label: '切柠檬', seconds: 5 },
+            { id: 'ice', label: '加冰', seconds: 4 },
+          ],
+        },
+        {
+          id: 'hotpot',
+          name: '火锅急救包',
+          emoji: '🍲',
+          points: 8,
+          steps: [
+            { id: 'soup', label: '开锅', seconds: 9 },
+            { id: 'meat', label: '涮肉', seconds: 7 },
+            { id: 'sauce', label: '调蘸料', seconds: 6 },
+          ],
+        },
       ],
+      customers: ['八八婆', '八八公', '显眼包客人', 'Chill Guy', '茶餐厅老板'],
     },
     drawGuess: {
-      prompt: '猫咪开飞机',
+      prompt: '公主请上车',
       drawer: '',
+      image: '',
       guesses: [],
+      round: 1,
     },
     wordChain: {
       current: '开开心心',
@@ -613,14 +728,19 @@ function normalizeMiniGames(games, fallback) {
     kitchen: {
       ...base.kitchen,
       ...(games?.kitchen || {}),
-      orders: Array.isArray(games?.kitchen?.orders) ? games.kitchen.orders : [],
-      menu: Array.isArray(games?.kitchen?.menu) ? games.kitchen.menu : base.kitchen.menu,
+      orders: Array.isArray(games?.kitchen?.orders) ? games.kitchen.orders.map((order) => normalizeKitchenOrder(order, base.kitchen.menu)) : [],
+      menu: normalizeKitchenMenu(games?.kitchen?.menu, base.kitchen.menu),
       score: validNumber(games?.kitchen?.score, base.kitchen.score),
+      combo: validNumber(games?.kitchen?.combo, base.kitchen.combo),
+      ticketsDone: validNumber(games?.kitchen?.ticketsDone, base.kitchen.ticketsDone),
+      customers: Array.isArray(games?.kitchen?.customers) ? games.kitchen.customers : base.kitchen.customers,
     },
     drawGuess: {
       ...base.drawGuess,
       ...(games?.drawGuess || {}),
       guesses: Array.isArray(games?.drawGuess?.guesses) ? games.drawGuess.guesses : [],
+      image: games?.drawGuess?.image || '',
+      round: validNumber(games?.drawGuess?.round, base.drawGuess.round),
     },
     wordChain: {
       ...base.wordChain,
@@ -633,6 +753,39 @@ function normalizeMiniGames(games, fallback) {
       guesses: Array.isArray(games?.riddle?.guesses) ? games.riddle.guesses : [],
       revealed: Boolean(games?.riddle?.revealed),
     },
+  }
+}
+
+function normalizeKitchenMenu(menu, defaultMenu) {
+  if (!Array.isArray(menu)) return defaultMenu
+  const existing = new Map(menu.map((dish) => [dish.id, dish]))
+  const merged = defaultMenu.map((dish) => ({
+    ...dish,
+    ...(existing.get(dish.id) || {}),
+    steps: Array.isArray(existing.get(dish.id)?.steps) ? existing.get(dish.id).steps : dish.steps,
+    emoji: existing.get(dish.id)?.emoji || dish.emoji,
+    points: validNumber(existing.get(dish.id)?.points, dish.points),
+  }))
+  const custom = menu.filter((dish) => dish.id && !defaultMenu.some((item) => item.id === dish.id) && Array.isArray(dish.steps))
+  return [...merged, ...custom]
+}
+
+function normalizeKitchenOrder(order, menu) {
+  const dish = menu.find((item) => item.id === order?.dishId) || menu.find((item) => item.name === order?.name) || menu[0]
+  return {
+    id: order?.id || createId(),
+    dishId: dish.id,
+    name: order?.name || dish.name,
+    emoji: order?.emoji || dish.emoji || '🍽️',
+    customer: order?.customer || '客人',
+    by: order?.by || '',
+    stepIndex: validNumber(order?.stepIndex, 0),
+    readyAt: order?.readyAt || '',
+    status: order?.status || (order?.served ? 'served' : order?.readyAt ? 'cooking' : 'waiting'),
+    served: Boolean(order?.served || order?.status === 'served'),
+    points: validNumber(order?.points, dish.points || 1),
+    patienceUntil: order?.patienceUntil || new Date(Date.now() + 90000).toISOString(),
+    createdAt: order?.createdAt || new Date().toISOString(),
   }
 }
 
@@ -676,10 +829,28 @@ function calendarStamp(dateString, timeString, offsetMinutes = 0) {
 
 export function normalizeChat(chat) {
   return {
-    messages: Array.isArray(chat?.messages) ? chat.messages : [],
+    title: chat?.title || 'BBG 和 BBP 的小群',
+    members: memberProfiles.filter((profile) => profile.id !== 'both'),
+    messages: Array.isArray(chat?.messages) ? chat.messages.map(normalizeChatMessage) : [],
     streak: validNumber(chat?.streak, 0),
     lastCheckInDate: chat?.lastCheckInDate || '',
     updatedAt: chat?.updatedAt || new Date().toISOString(),
+  }
+}
+
+function normalizeChatMessage(message) {
+  const profile = getMemberProfile(message?.username || message?.displayName || message?.userId)
+  return {
+    ...message,
+    id: message?.id || createId(),
+    userId: message?.userId || '',
+    username: message?.username || profile.username,
+    displayName: message?.displayName || profile.name,
+    avatar: message?.avatar || profile.avatar,
+    text: message?.text || '',
+    card: message?.card || null,
+    reactions: message?.reactions || {},
+    createdAt: message?.createdAt || new Date().toISOString(),
   }
 }
 
@@ -694,6 +865,8 @@ export function applyCheckIn(chat, user) {
     id: createId(),
     userId: user.id,
     displayName: user.displayName,
+    username: user.username,
+    avatar: getMemberProfile(user.username).avatar,
     text: '今日打卡',
     card: null,
     reactions: { '🔥': [user.id] },
