@@ -1,15 +1,15 @@
 {
-  "name": "lumiday-web",
+  "name": "baba-daily-workbench",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "deploy": "npm run build && npx wrangler deploy"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.107.0",
     "@vitejs/plugin-react": "^6.0.2",
     "lucide-react": "^0.561.0",
     "react": "^19.2.7",

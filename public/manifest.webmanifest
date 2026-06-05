@@ -1,11 +1,11 @@
 {
-  "name": "LumiDay 今天有你",
-  "short_name": "LumiDay",
-  "description": "实时情侣生活副驾：今天安排、学习陪跑、旅行共创和轻小游戏。",
+  "name": "八八婆和八八公的日常工作台",
+  "short_name": "八八日常",
+  "description": "任务、学习、番茄钟、倒数日、链接卡片和一起玩的小游戏。",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8f5ef",
-  "theme_color": "#0f766e",
+  "background_color": "#f6f3eb",
+  "theme_color": "#f6f3eb",
   "icons": [
     {
       "src": "/icon.svg",

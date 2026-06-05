@@ -1,144 +1,1025 @@
 import {
-  ArrowLeftRight,
+  AlarmClock,
   BookOpen,
   CalendarDays,
-  Camera,
   Check,
   ChevronRight,
-  Circle,
-  CircleDot,
-  ClipboardList,
-  Clock,
-  Coffee,
-  Copy,
+  Clock3,
+  Crown,
+  Dice5,
+  ExternalLink,
   Gamepad2,
-  Gift,
-  GraduationCap,
-  Heart,
-  Home,
-  Hotel,
+  Globe2,
+  KeyRound,
   Link as LinkIcon,
-  Lock,
-  Map,
-  MessageCircle,
+  ListChecks,
+  LogOut,
+  Pause,
   Plane,
+  Play,
   Plus,
   RefreshCw,
+  RotateCcw,
+  Search,
   Share2,
+  ShieldCheck,
   Sparkles,
   Star,
-  Timer,
+  TimerReset,
+  Trophy,
+  UserPlus,
   Users,
-  Vote,
-  WalletCards,
-  Wifi,
-  WifiOff,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  cloneState,
-  createRoomSnapshot,
-  isSupabaseConfigured,
-  joinRoomByInvite,
-  loadRoomSnapshot,
-  profileIds,
-  saveRoomSnapshot,
-  subscribeToRoom,
-} from './roomStore.js'
+  clearSession,
+  colors,
+  createGame,
+  getBackendMode,
+  getGame,
+  getLegalPieces,
+  getSavedLocale,
+  getSavedSession,
+  getWorkspace,
+  homeLength,
+  joinGame,
+  loginAccount,
+  movePiece,
+  previewLink,
+  registerAccount,
+  restartGame,
+  rollDice,
+  saveLocale,
+  saveSession,
+  saveWorkspace,
+  summarizeLink,
+  toGlobalPosition,
+  trackLength,
+} from './apiClient.js'
 
-const viewConfig = [
-  { id: 'today', label: '今天', icon: Home, path: '' },
-  { id: 'study', label: '学习', icon: BookOpen, path: '' },
-  { id: 'trip', label: '旅行', icon: Map, path: 'trip' },
-  { id: 'play', label: '一起玩', icon: Gamepad2, path: 'play' },
+const boardSize = 15
+const trackCoords = buildTrackCoords()
+const taskLists = ['today', 'important', 'deadline', 'all']
+const locales = [
+  { id: 'zh-Hans', label: '简体中文' },
+  { id: 'zh-Hant-HK', label: '香港繁中' },
+  { id: 'en', label: 'English' },
 ]
 
-const voteLabels = {
-  must: '必去',
-  maybe: '可去',
-  skip: '不去',
+const copy = {
+  'zh-Hans': {
+    appName: '八八婆和八八公的日常工作台',
+    appSub: '两个人用',
+    authTitle: '把今天、学习、链接和小游戏放在一起。',
+    authText: '注册账号后就能保存任务、倒数日、外链卡片，也能开一局飞行棋。',
+    register: '注册',
+    login: '登录',
+    displayName: '昵称',
+    account: '账号',
+    password: '密码',
+    enter: '进入',
+    cloud: '云端同步',
+    local: '本地演示',
+    checking: '检查中',
+    logout: '退出',
+    plan: '计划',
+    study: '学习',
+    focus: '番茄钟',
+    dates: '倒数日',
+    links: '链接',
+    play: '一起玩',
+    today: '今天',
+    important: '重要',
+    deadline: 'Deadline',
+    all: '全部',
+    add: '添加',
+    taskPlaceholder: '新任务',
+    dueDate: '日期',
+    course: '课程',
+    studyTitle: '学习任务',
+    note: '备注',
+    start: '开始',
+    pause: '暂停',
+    reset: '重置',
+    focusDone: '完成一轮',
+    dateTitle: '事件',
+    linkTitle: '标题',
+    linkUrl: '链接',
+    summarize: 'AI 总结',
+    preview: '抓取信息',
+    open: '打开',
+    saving: '保存中',
+    updated: '已更新',
+    done: '已完成',
+    markDone: '标记完成',
+    focusLabel: '专注',
+    breakLabel: '休息',
+    sessions: '轮数',
+    countdown: '倒数',
+    anniversary: '纪念日',
+    turn: '回合',
+    players: '玩家',
+    log: '战况',
+    won: '赢了',
+    yourTurn: '轮到你',
+    waitOther: '等对方',
+    createGame: '开飞行棋',
+    joinGame: '加入房间',
+    roomCode: '房间码',
+    invite: '邀请',
+    lobby: '返回',
+    roll: '掷骰子',
+    restart: '重开',
+    waiting: '等人加入',
+    playing: '对局中',
+    finished: '已结束',
+  },
+  'zh-Hant-HK': {
+    appName: '八八婆同八八公嘅日常工作台',
+    appSub: '兩個人用',
+    authTitle: '今日、學習、連結同小遊戲，放埋一齊。',
+    authText: '註冊之後可以存任務、倒數日、外鏈卡片，亦可以開局飛行棋。',
+    register: '註冊',
+    login: '登入',
+    displayName: '暱稱',
+    account: '帳號',
+    password: '密碼',
+    enter: '入去',
+    cloud: '雲端同步',
+    local: '本機示範',
+    checking: '檢查中',
+    logout: '登出',
+    plan: '計劃',
+    study: '學習',
+    focus: '番茄鐘',
+    dates: '倒數日',
+    links: '連結',
+    play: '一齊玩',
+    today: '今日',
+    important: '重要',
+    deadline: 'Deadline',
+    all: '全部',
+    add: '新增',
+    taskPlaceholder: '新任務',
+    dueDate: '日期',
+    course: '課程',
+    studyTitle: '學習任務',
+    note: '備註',
+    start: '開始',
+    pause: '暫停',
+    reset: '重設',
+    focusDone: '完成一輪',
+    dateTitle: '事件',
+    linkTitle: '標題',
+    linkUrl: '連結',
+    summarize: 'AI 摘要',
+    preview: '抓資料',
+    open: '打開',
+    saving: '儲存緊',
+    updated: '已更新',
+    done: '完成咗',
+    markDone: '標記完成',
+    focusLabel: '專注',
+    breakLabel: '休息',
+    sessions: '輪數',
+    countdown: '倒數',
+    anniversary: '紀念日',
+    turn: '回合',
+    players: '玩家',
+    log: '戰況',
+    won: '贏咗',
+    yourTurn: '到你',
+    waitOther: '等對方',
+    createGame: '開飛行棋',
+    joinGame: '加入房間',
+    roomCode: '房間碼',
+    invite: '邀請',
+    lobby: '返回',
+    roll: '掟骰',
+    restart: '重開',
+    waiting: '等人加入',
+    playing: '玩緊',
+    finished: '完咗',
+  },
+  en: {
+    appName: 'Baba Po and Baba Gong',
+    appSub: 'Daily dashboard',
+    authTitle: 'Plans, study, links, dates, and games in one place.',
+    authText: 'Create an account to save tasks, countdowns, link cards, and play flying chess together.',
+    register: 'Register',
+    login: 'Login',
+    displayName: 'Name',
+    account: 'Username',
+    password: 'Password',
+    enter: 'Enter',
+    cloud: 'Cloud sync',
+    local: 'Local demo',
+    checking: 'Checking',
+    logout: 'Logout',
+    plan: 'Plan',
+    study: 'Study',
+    focus: 'Timer',
+    dates: 'Dates',
+    links: 'Links',
+    play: 'Play',
+    today: 'Today',
+    important: 'Important',
+    deadline: 'Deadline',
+    all: 'All',
+    add: 'Add',
+    taskPlaceholder: 'New task',
+    dueDate: 'Date',
+    course: 'Course',
+    studyTitle: 'Study item',
+    note: 'Note',
+    start: 'Start',
+    pause: 'Pause',
+    reset: 'Reset',
+    focusDone: 'Complete',
+    dateTitle: 'Event',
+    linkTitle: 'Title',
+    linkUrl: 'Link',
+    summarize: 'AI summary',
+    preview: 'Fetch',
+    open: 'Open',
+    saving: 'Saving',
+    updated: 'Updated',
+    done: 'Done',
+    markDone: 'Mark done',
+    focusLabel: 'Focus',
+    breakLabel: 'Break',
+    sessions: 'Sessions',
+    countdown: 'Countdown',
+    anniversary: 'Anniversary',
+    turn: 'Turn',
+    players: 'Players',
+    log: 'Log',
+    won: 'won',
+    yourTurn: 'Your turn',
+    waitOther: 'Waiting',
+    createGame: 'New game',
+    joinGame: 'Join',
+    roomCode: 'Code',
+    invite: 'Invite',
+    lobby: 'Back',
+    roll: 'Roll',
+    restart: 'Restart',
+    waiting: 'Waiting',
+    playing: 'Playing',
+    finished: 'Finished',
+  },
 }
 
-const statusLabels = {
-  open: '待确认',
-  done: '完成',
-  next: '下一步',
+const navItems = [
+  { id: 'plan', icon: ListChecks },
+  { id: 'study', icon: BookOpen },
+  { id: 'focus', icon: AlarmClock },
+  { id: 'dates', icon: CalendarDays },
+  { id: 'links', icon: LinkIcon },
+  { id: 'play', icon: Gamepad2 },
+]
+
+const baseCoords = {
+  red: [
+    [1, 1],
+    [1, 3],
+    [3, 1],
+    [3, 3],
+  ],
+  blue: [
+    [1, 11],
+    [1, 13],
+    [3, 11],
+    [3, 13],
+  ],
+  green: [
+    [11, 13],
+    [13, 13],
+    [11, 11],
+    [13, 11],
+  ],
+  gold: [
+    [11, 1],
+    [13, 1],
+    [11, 3],
+    [13, 3],
+  ],
 }
 
-function getRoute() {
-  const segments = window.location.pathname.split('/').filter(Boolean)
-  if (segments[0] !== 'room') return { mode: 'home', roomId: null, view: 'today' }
-  const view = segments[2] === 'trip' ? 'trip' : segments[2] === 'play' ? 'play' : 'today'
-  return { mode: 'room', roomId: segments[1], view }
+const homeCoords = {
+  red: [
+    [1, 7],
+    [2, 7],
+    [3, 7],
+    [4, 7],
+    [5, 7],
+    [6, 7],
+  ],
+  blue: [
+    [7, 13],
+    [7, 12],
+    [7, 11],
+    [7, 10],
+    [7, 9],
+    [7, 8],
+  ],
+  green: [
+    [13, 7],
+    [12, 7],
+    [11, 7],
+    [10, 7],
+    [9, 7],
+    [8, 7],
+  ],
+  gold: [
+    [7, 1],
+    [7, 2],
+    [7, 3],
+    [7, 4],
+    [7, 5],
+    [7, 6],
+  ],
 }
 
-function getSavedProfileId() {
-  return localStorage.getItem('lumiday:active-profile') || profileIds.primary
-}
-
-function useRoom(roomId) {
-  const [state, setState] = useState(null)
-  const [status, setStatus] = useState({ phase: 'loading', message: '正在打开房间' })
+function App() {
+  const [session, setSession] = useState(getSavedSession)
+  const [mode, setMode] = useState('checking')
+  const [route, setRoute] = useState(readRoute)
+  const [locale, setLocale] = useState(getSavedLocale)
+  const t = copy[locale] || copy['zh-Hans']
 
   useEffect(() => {
-    let alive = true
-    setStatus({ phase: 'loading', message: '正在打开房间' })
-    loadRoomSnapshot(roomId)
-      .then((snapshot) => {
-        if (!alive) return
-        setState(snapshot)
-        setStatus({
-          phase: 'ready',
-          message: isSupabaseConfigured ? '实时同步已连接' : '本地演示同步',
-        })
-      })
-      .catch((error) => {
-        if (!alive) return
-        setStatus({ phase: 'error', message: error.message })
-      })
-
-    return () => {
-      alive = false
-    }
-  }, [roomId])
-
-  useEffect(() => {
-    if (!roomId) return undefined
-    return subscribeToRoom(roomId, (nextState) => {
-      setState(nextState)
-      setStatus({
-        phase: 'ready',
-        message: isSupabaseConfigured ? '刚刚同步更新' : '本地演示同步',
-      })
-    })
-  }, [roomId])
-
-  const commit = useCallback((producer) => {
-    setState((current) => {
-      if (!current) return current
-      const draft = cloneState(current)
-      const next = producer(draft) || draft
-      saveRoomSnapshot(next).catch((error) => {
-        setStatus({ phase: 'error', message: error.message })
-      })
-      return next
-    })
+    getBackendMode().then(setMode)
   }, [])
 
-  return { state, status, commit }
+  useEffect(() => {
+    document.title = t.appName
+    document.documentElement.lang = locale
+    saveLocale(locale)
+  }, [locale, t.appName])
+
+  useEffect(() => {
+    const onPop = () => setRoute(readRoute())
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  const onAuth = (nextSession) => {
+    saveSession(nextSession)
+    setSession(nextSession)
+  }
+
+  const logout = () => {
+    clearSession()
+    setSession(null)
+    window.history.pushState({}, '', '/')
+    setRoute(readRoute())
+  }
+
+  if (!session) {
+    return <AuthScreen locale={locale} setLocale={setLocale} mode={mode} onAuth={onAuth} t={t} />
+  }
+
+  return (
+    <main className="app-shell">
+      <Header session={session} mode={mode} logout={logout} locale={locale} setLocale={setLocale} t={t} />
+      {route.gameId ? (
+        <GameRoom gameId={route.gameId} session={session} setRoute={setRoute} t={t} />
+      ) : (
+        <Dashboard session={session} setRoute={setRoute} locale={locale} t={t} />
+      )}
+    </main>
+  )
 }
 
-function HomeScreen() {
-  const [inviteCode, setInviteCode] = useState('')
+function AuthScreen({ locale, setLocale, mode, onAuth, t }) {
+  const [authMode, setAuthMode] = useState('register')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const createRoom = async () => {
+  const submit = async (event) => {
+    event.preventDefault()
     setBusy(true)
     setError('')
     try {
-      const snapshot = await createRoomSnapshot()
-      window.location.href = `/room/${snapshot.room.id}`
+      const payload = { username, password, displayName }
+      const data = authMode === 'register' ? await registerAccount(payload) : await loginAccount(payload)
+      onAuth(data.session)
+    } catch (submitError) {
+      setError(submitError.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <main className="auth-screen">
+      <section className="auth-hero">
+        <BrandBlock t={t} large />
+        <div className="hero-copy">
+          <h2>{t.authTitle}</h2>
+          <p>{t.authText}</p>
+        </div>
+      </section>
+
+      <section className="auth-card" aria-label="账号">
+        <LanguageSelect locale={locale} setLocale={setLocale} />
+        <div className="auth-tabs">
+          <button className={authMode === 'register' ? 'active' : ''} onClick={() => setAuthMode('register')}>
+            <UserPlus size={18} />
+            {t.register}
+          </button>
+          <button className={authMode === 'login' ? 'active' : ''} onClick={() => setAuthMode('login')}>
+            <KeyRound size={18} />
+            {t.login}
+          </button>
+        </div>
+        <form className="auth-form" onSubmit={submit}>
+          {authMode === 'register' ? (
+            <label>
+              {t.displayName}
+              <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Aaron" />
+            </label>
+          ) : null}
+          <label>
+            {t.account}
+            <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="aaron" autoCapitalize="none" />
+          </label>
+          <label>
+            {t.password}
+            <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" type="password" />
+          </label>
+          {error ? <p className="form-error">{error}</p> : null}
+          <button className="primary-button" disabled={busy} type="submit">
+            <ChevronRight size={18} />
+            {authMode === 'register' ? t.register : t.login}
+          </button>
+        </form>
+        <SyncPill mode={mode} t={t} />
+      </section>
+    </main>
+  )
+}
+
+function Header({ session, mode, logout, locale, setLocale, t }) {
+  return (
+    <header className="top-bar">
+      <BrandBlock t={t} />
+      <div className="top-actions">
+        <LanguageSelect locale={locale} setLocale={setLocale} compact />
+        <SyncPill mode={mode} t={t} compact />
+        <span className="user-pill">{session.user.displayName}</span>
+        <button onClick={logout}>
+          <LogOut size={17} />
+          {t.logout}
+        </button>
+      </div>
+    </header>
+  )
+}
+
+function BrandBlock({ t, large = false }) {
+  return (
+    <div className={`brand-row ${large ? 'large' : ''}`}>
+      <span className="brand-mark">
+        <Crown size={large ? 34 : 25} />
+      </span>
+      <div>
+        <p>{t.appSub}</p>
+        <h1>{t.appName}</h1>
+      </div>
+    </div>
+  )
+}
+
+function LanguageSelect({ locale, setLocale, compact = false }) {
+  return (
+    <label className={`language-select ${compact ? 'compact' : ''}`}>
+      <Globe2 size={16} />
+      <select value={locale} onChange={(event) => setLocale(event.target.value)}>
+        {locales.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function SyncPill({ mode, t, compact = false }) {
+  return (
+    <span className={`mode-pill ${mode === 'cloud' ? 'cloud' : ''} ${compact ? 'compact' : ''}`}>
+      <ShieldCheck size={16} />
+      {mode === 'cloud' ? t.cloud : mode === 'local' ? t.local : t.checking}
+    </span>
+  )
+}
+
+function Dashboard({ session, setRoute, locale, t }) {
+  const [active, setActive] = useState('plan')
+  const [workspace, setWorkspace] = useState(null)
+  const workspaceRef = useRef(null)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const refresh = useCallback(async () => {
+    try {
+      const data = await getWorkspace()
+      workspaceRef.current = data.workspace
+      setWorkspace(data.workspace)
+      setError('')
+    } catch (refreshError) {
+      setError(refreshError.message)
+    }
+  }, [])
+
+  useEffect(() => {
+    refresh()
+    const localSync = () => refresh()
+    window.addEventListener('yhd-local-sync', localSync)
+    return () => {
+      window.removeEventListener('yhd-local-sync', localSync)
+    }
+  }, [refresh])
+
+  const commit = async (updater) => {
+    const current = workspaceRef.current || workspace
+    if (!current) return null
+    const next = typeof updater === 'function' ? updater(structuredClone(current)) : updater
+    next.settings = { ...(next.settings || {}), locale }
+    next.updatedAt = new Date().toISOString()
+    workspaceRef.current = next
+    setWorkspace(next)
+    setSaving(true)
+    try {
+      const data = await saveWorkspace(next)
+      workspaceRef.current = data.workspace
+      setWorkspace(data.workspace)
+      setError('')
+      return data.workspace
+    } catch (saveError) {
+      setError(saveError.message)
+      throw saveError
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!workspace) {
+    return (
+      <section className="loading-panel">
+        <RefreshCw className="spin" size={26} />
+        <p>{t.checking}</p>
+      </section>
+    )
+  }
+
+  const panelProps = { workspace, commit, session, setRoute, t }
+  const ActiveIcon = navItems.find((item) => item.id === active)?.icon || ListChecks
+
+  return (
+    <section className="dashboard-layout">
+      <aside className="side-nav">
+        {navItems.map(({ id, icon: Icon }) => (
+          <button key={id} className={active === id ? 'active' : ''} onClick={() => setActive(id)}>
+            <Icon size={19} />
+            {t[id]}
+          </button>
+        ))}
+      </aside>
+
+      <section className="dashboard-main">
+        <div className="section-title">
+          <span className="eyebrow">
+            <ActiveIcon size={18} />
+            {t[active]}
+          </span>
+          <StatusLine workspace={workspace} saving={saving} error={error} t={t} />
+        </div>
+        {active === 'plan' ? <PlanPanel {...panelProps} /> : null}
+        {active === 'study' ? <StudyPanel {...panelProps} /> : null}
+        {active === 'focus' ? <FocusPanel {...panelProps} /> : null}
+        {active === 'dates' ? <DatesPanel {...panelProps} /> : null}
+        {active === 'links' ? <LinksPanel {...panelProps} /> : null}
+        {active === 'play' ? <PlayPanel {...panelProps} /> : null}
+      </section>
+    </section>
+  )
+}
+
+function StatusLine({ workspace, saving, error, t }) {
+  if (error) return <p className="status-line error">{error}</p>
+  return <p className="status-line">{saving ? t.saving : `${t.updated} ${formatShortTime(workspace.updatedAt)}`}</p>
+}
+
+function PlanPanel({ workspace, commit, t }) {
+  const [list, setList] = useState('today')
+  const [title, setTitle] = useState('')
+  const [dueDate, setDueDate] = useState(todayString())
+
+  const filtered = workspace.tasks.filter((task) => {
+    if (list === 'all') return true
+    if (list === 'important') return task.important
+    return task.list === list
+  })
+
+  const addTask = (event) => {
+    event.preventDefault()
+    if (!title.trim()) return
+    commit((draft) => {
+      draft.tasks.unshift({
+        id: createClientId(),
+        title: title.trim(),
+        list,
+        dueDate,
+        done: false,
+        important: list === 'important',
+        createdAt: new Date().toISOString(),
+      })
+      return draft
+    })
+    setTitle('')
+  }
+
+  return (
+    <div className="tool-grid plan-grid">
+      <div className="list-tabs">
+        {taskLists.map((id) => (
+          <button className={list === id ? 'active' : ''} key={id} onClick={() => setList(id)}>
+            {t[id]}
+            <span>{countForList(workspace.tasks, id)}</span>
+          </button>
+        ))}
+      </div>
+      <div className="tool-panel">
+        <form className="inline-form" onSubmit={addTask}>
+          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t.taskPlaceholder} />
+          <input value={dueDate} onChange={(event) => setDueDate(event.target.value)} type="date" />
+          <button type="submit">
+            <Plus size={18} />
+            {t.add}
+          </button>
+        </form>
+        <div className="task-list">
+          {filtered.map((task) => (
+            <TaskRow key={task.id} task={task} commit={commit} t={t} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TaskRow({ task, commit, t }) {
+  const due = dateDistance(task.dueDate)
+  return (
+    <article className={`task-row ${task.done ? 'done' : ''}`}>
+      <button
+        className="check-button"
+        onClick={() =>
+          commit((draft) => {
+            const item = draft.tasks.find((candidate) => candidate.id === task.id)
+            if (item) item.done = !item.done
+            return draft
+          })
+        }
+      >
+        {task.done ? <Check size={17} /> : null}
+      </button>
+      <div>
+        <strong>{task.title}</strong>
+        <p>
+          {task.dueDate || t.dueDate}
+          {due ? ` · ${due}` : ''}
+        </p>
+      </div>
+      <button
+        className={`icon-button ${task.important ? 'active' : ''}`}
+        onClick={() =>
+          commit((draft) => {
+            const item = draft.tasks.find((candidate) => candidate.id === task.id)
+            if (item) item.important = !item.important
+            return draft
+          })
+        }
+      >
+        <Star size={17} />
+      </button>
+    </article>
+  )
+}
+
+function StudyPanel({ workspace, commit, t }) {
+  const [course, setCourse] = useState('')
+  const [title, setTitle] = useState('')
+  const [note, setNote] = useState('')
+
+  const addStudy = (event) => {
+    event.preventDefault()
+    if (!title.trim()) return
+    commit((draft) => {
+      draft.studyItems.unshift({
+        id: createClientId(),
+        course: course.trim() || t.course,
+        title: title.trim(),
+        note: note.trim(),
+        done: false,
+        minutes: 25,
+        createdAt: new Date().toISOString(),
+      })
+      return draft
+    })
+    setTitle('')
+    setNote('')
+  }
+
+  return (
+    <div className="tool-panel">
+      <form className="stack-form" onSubmit={addStudy}>
+        <div className="two-fields">
+          <input value={course} onChange={(event) => setCourse(event.target.value)} placeholder={t.course} />
+          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t.studyTitle} />
+        </div>
+        <input value={note} onChange={(event) => setNote(event.target.value)} placeholder={t.note} />
+        <button type="submit">
+          <Plus size={18} />
+          {t.add}
+        </button>
+      </form>
+      <div className="card-grid">
+        {workspace.studyItems.map((item) => (
+          <article className={`study-card ${item.done ? 'done' : ''}`} key={item.id}>
+            <span>{item.course}</span>
+            <h3>{item.title}</h3>
+            <p>{item.note || ' '}</p>
+            <button
+              onClick={() =>
+                commit((draft) => {
+                  const target = draft.studyItems.find((candidate) => candidate.id === item.id)
+                  if (target) target.done = !target.done
+                  return draft
+                })
+              }
+            >
+              <Check size={17} />
+              {item.done ? t.done : t.markDone}
+            </button>
+          </article>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function FocusPanel({ workspace, commit, t }) {
+  const [secondsLeft, setSecondsLeft] = useState(workspace.timer.focusMinutes * 60)
+  const [running, setRunning] = useState(false)
+
+  useEffect(() => {
+    if (!running) return undefined
+    const timer = window.setInterval(() => {
+      setSecondsLeft((value) => {
+        if (value <= 1) {
+          window.clearInterval(timer)
+          setRunning(false)
+          commit((draft) => {
+            draft.timer.sessions += 1
+            return draft
+          })
+          return workspace.timer.focusMinutes * 60
+        }
+        return value - 1
+      })
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [commit, running, workspace.timer.focusMinutes])
+
+  const setMinutes = (value) => {
+    const minutes = Number(value)
+    commit((draft) => {
+      draft.timer.focusMinutes = minutes
+      return draft
+    })
+    setSecondsLeft(minutes * 60)
+  }
+
+  return (
+    <div className="timer-layout">
+      <section className="timer-card">
+        <Clock3 size={34} />
+        <strong>{formatTimer(secondsLeft)}</strong>
+        <div className="timer-actions">
+          <button className="primary-button" onClick={() => setRunning((value) => !value)}>
+            {running ? <Pause size={18} /> : <Play size={18} />}
+            {running ? t.pause : t.start}
+          </button>
+          <button
+            onClick={() => {
+              setRunning(false)
+              setSecondsLeft(workspace.timer.focusMinutes * 60)
+            }}
+          >
+            <TimerReset size={18} />
+            {t.reset}
+          </button>
+        </div>
+      </section>
+      <section className="tool-panel compact-panel">
+        <label>
+          {t.focusLabel}
+          <input value={workspace.timer.focusMinutes} min="5" max="90" onChange={(event) => setMinutes(event.target.value)} type="number" />
+        </label>
+        <label>
+          {t.breakLabel}
+          <input
+            value={workspace.timer.breakMinutes}
+            min="3"
+            max="30"
+            onChange={(event) =>
+              commit((draft) => {
+                draft.timer.breakMinutes = Number(event.target.value)
+                return draft
+              })
+            }
+            type="number"
+          />
+        </label>
+        <div className="stat-tile">
+          <span>{t.sessions}</span>
+          <strong>{workspace.timer.sessions}</strong>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function DatesPanel({ workspace, commit, t }) {
+  const [title, setTitle] = useState('')
+  const [date, setDate] = useState(todayString(7))
+  const [type, setType] = useState('countdown')
+
+  const addDate = (event) => {
+    event.preventDefault()
+    if (!title.trim()) return
+    commit((draft) => {
+      draft.dates.unshift({
+        id: createClientId(),
+        title: title.trim(),
+        date,
+        type,
+        note: '',
+        createdAt: new Date().toISOString(),
+      })
+      return draft
+    })
+    setTitle('')
+  }
+
+  return (
+    <div className="tool-panel">
+      <form className="inline-form" onSubmit={addDate}>
+        <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t.dateTitle} />
+        <input value={date} onChange={(event) => setDate(event.target.value)} type="date" />
+        <select value={type} onChange={(event) => setType(event.target.value)}>
+          <option value="countdown">{t.countdown}</option>
+          <option value="anniversary">{t.anniversary}</option>
+          <option value="deadline">Deadline</option>
+        </select>
+        <button type="submit">
+          <Plus size={18} />
+          {t.add}
+        </button>
+      </form>
+      <div className="date-grid">
+        {workspace.dates.map((item) => (
+          <article className="date-card" key={item.id}>
+            <span>{item.type}</span>
+            <h3>{item.title}</h3>
+            <strong>{dateDistance(item.date) || item.date}</strong>
+            <p>{item.date}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function LinksPanel({ workspace, commit, t }) {
+  const [url, setUrl] = useState('')
+  const [title, setTitle] = useState('')
+  const [note, setNote] = useState('')
+  const [busyId, setBusyId] = useState('')
+
+  const addLink = async (event) => {
+    event.preventDefault()
+    if (!url.trim()) return
+    const baseCard = {
+      id: createClientId(),
+      url: url.trim(),
+      title: title.trim() || detectPlatform(url),
+      note: note.trim(),
+      platform: detectPlatform(url),
+      summary: '',
+      image: '',
+      description: '',
+      createdAt: new Date().toISOString(),
+    }
+    await commit((draft) => {
+      draft.links = [baseCard, ...(draft.links || [])]
+      return draft
+    })
+    setUrl('')
+    setTitle('')
+    setNote('')
+
+    setBusyId(baseCard.id)
+    try {
+      const data = await previewLink(baseCard.url)
+      await commit((draft) => {
+        const item = draft.links?.find((candidate) => candidate.id === baseCard.id)
+        if (item) Object.assign(item, data.card)
+        return draft
+      })
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  const runSummary = async (card) => {
+    setBusyId(card.id)
+    try {
+      const data = await summarizeLink(card)
+      await commit((draft) => {
+        const item = draft.links?.find((candidate) => candidate.id === card.id)
+        if (item) item.summary = data.summary
+        return draft
+      })
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  return (
+    <div className="tool-panel">
+      <form className="stack-form" onSubmit={addLink}>
+        <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder={t.linkUrl} />
+        <div className="two-fields">
+          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t.linkTitle} />
+          <input value={note} onChange={(event) => setNote(event.target.value)} placeholder={t.note} />
+        </div>
+        <button type="submit">
+          <Plus size={18} />
+          {t.add}
+        </button>
+      </form>
+      <div className="link-grid">
+        {(workspace.links || []).map((card) => (
+          <article className="link-card" key={card.id}>
+            <div className="link-thumb">
+              {card.image ? <img alt="" src={card.image} /> : <Search size={28} />}
+            </div>
+            <div className="link-body">
+              <span>{card.platform || detectPlatform(card.url)}</span>
+              <h3>{card.title || card.url}</h3>
+              <p>{card.summary || card.description || card.note || ' '}</p>
+              <div className="link-actions">
+                <a href={card.url} rel="noreferrer" target="_blank">
+                  <ExternalLink size={16} />
+                  {t.open}
+                </a>
+                <button disabled={busyId === card.id} onClick={() => runSummary(card)}>
+                  <Sparkles size={16} />
+                  {busyId === card.id ? t.checking : t.summarize}
+                </button>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PlayPanel({ setRoute, t }) {
+  const [code, setCode] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const openGame = (game) => {
+    window.history.pushState({}, '', `/game/${game.id}`)
+    setRoute(readRoute())
+  }
+
+  const create = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      const data = await createGame()
+      openGame(data.game)
     } catch (createError) {
       setError(createError.message)
     } finally {
@@ -146,17 +1027,13 @@ function HomeScreen() {
     }
   }
 
-  const joinRoom = async (event) => {
+  const join = async (event) => {
     event.preventDefault()
     setBusy(true)
     setError('')
     try {
-      const snapshot = await joinRoomByInvite(inviteCode)
-      if (!snapshot) {
-        setError('没有找到这个邀请码')
-        return
-      }
-      window.location.href = `/room/${snapshot.room.id}`
+      const data = await joinGame(code)
+      openGame(data.game)
     } catch (joinError) {
       setError(joinError.message)
     } finally {
@@ -165,648 +1042,346 @@ function HomeScreen() {
   }
 
   return (
-    <main className="home-screen">
-      <section className="home-hero">
-        <div className="brand-lockup">
-          <span className="brand-icon">
-            <Heart size={26} />
-          </span>
-          <div>
-            <p>LumiDay</p>
-            <h1>今天有你</h1>
-          </div>
-        </div>
-        <div className="home-copy">
-          <h2>一个给她先用的实时生活副驾</h2>
-          <p>今天怎么安排、学什么、去哪玩、要不要来个小默契测试，都放在一个轻轻的房间里。</p>
-        </div>
-      </section>
-
-      <section className="home-panel" aria-label="创建或加入房间">
-        <div className="panel-heading">
-          <Sparkles size={20} />
-          <div>
-            <h2>开始一个房间</h2>
-            <p>{isSupabaseConfigured ? 'Supabase 实时同步已启用' : '当前是本地演示模式'}</p>
-          </div>
-        </div>
-        <button className="primary-button wide" onClick={createRoom} disabled={busy}>
+    <div className="play-panel">
+      <section className="play-hero">
+        <Plane size={42} />
+        <h2>谕皇大帝</h2>
+        <p>一起玩的板块。先放飞行棋，后面还能继续加别的小游戏。</p>
+        <button className="primary-button" onClick={create} disabled={busy}>
           <Plus size={18} />
-          创建情侣房间
+          {t.createGame}
         </button>
-        <form className="join-form" onSubmit={joinRoom}>
-          <input
-            value={inviteCode}
-            onChange={(event) => setInviteCode(event.target.value)}
-            placeholder="输入邀请码，例如 LUMI52"
-            aria-label="邀请码"
-          />
+      </section>
+      <section className="tool-panel compact-panel">
+        <form className="stack-form" onSubmit={join}>
+          <input value={code} onChange={(event) => setCode(event.target.value)} placeholder={t.roomCode} autoCapitalize="characters" />
           <button type="submit" disabled={busy}>
-            加入
+            <Users size={18} />
+            {t.joinGame}
           </button>
         </form>
         {error ? <p className="form-error">{error}</p> : null}
-        <div className="home-proof">
-          <span>
-            <Wifi size={16} />
-            实时房间
-          </span>
-          <span>
-            <Lock size={16} />
-            轻私人
-          </span>
-          <span>
-            <Gamepad2 size={16} />
-            可互动
-          </span>
-        </div>
       </section>
-    </main>
+    </div>
   )
 }
 
-function App() {
-  const [route, setRoute] = useState(getRoute)
-
-  useEffect(() => {
-    const handlePop = () => setRoute(getRoute())
-    window.addEventListener('popstate', handlePop)
-    return () => window.removeEventListener('popstate', handlePop)
-  }, [])
-
-  if (route.mode === 'home') return <HomeScreen />
-
-  return <RoomScreen roomId={route.roomId} initialView={route.view} onRouteChange={setRoute} />
-}
-
-function RoomScreen({ roomId, initialView, onRouteChange }) {
-  const { state, status, commit } = useRoom(roomId)
-  const [activeView, setActiveView] = useState(initialView)
-  const [activeProfileId, setActiveProfileId] = useState(getSavedProfileId)
-  const [newCard, setNewCard] = useState('')
+function GameRoom({ gameId, session, setRoute, t }) {
+  const [game, setGame] = useState(null)
+  const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const refresh = useCallback(async () => {
+    try {
+      const data = await getGame(gameId)
+      setGame(data.game)
+      setError('')
+    } catch (refreshError) {
+      setError(refreshError.message)
+    }
+  }, [gameId])
 
   useEffect(() => {
-    setActiveView(initialView)
-  }, [initialView])
+    refresh()
+    const timer = window.setInterval(refresh, 900)
+    const localSync = () => refresh()
+    window.addEventListener('yhd-local-sync', localSync)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('yhd-local-sync', localSync)
+    }
+  }, [refresh])
 
-  useEffect(() => {
-    localStorage.setItem('lumiday:active-profile', activeProfileId)
-  }, [activeProfileId])
-
-  const profiles = state?.profiles ?? []
-  const activeProfile = profiles.find((profile) => profile.id === activeProfileId) ?? profiles[0]
-  const partnerProfile =
-    profiles.find((profile) => profile.id !== activeProfile?.id) ?? profiles[1] ?? profiles[0]
-
-  const roomLink = state ? `${window.location.origin}/room/${state.room.id}` : ''
-
-  const navigate = (viewId) => {
-    if (!state) return
-    const config = viewConfig.find((item) => item.id === viewId)
-    const path = config?.path ? `/room/${state.room.id}/${config.path}` : `/room/${state.room.id}`
-    window.history.pushState({}, '', path)
-    setActiveView(viewId)
-    onRouteChange(getRoute())
+  const act = async (runner) => {
+    setBusy(true)
+    setError('')
+    try {
+      const data = await runner()
+      setGame(data.game)
+    } catch (actionError) {
+      setError(actionError.message)
+    } finally {
+      setBusy(false)
+    }
   }
 
-  const copyRoom = async () => {
-    if (!state) return
-    const text = `LumiDay 今天有你\n链接：${roomLink}\n邀请码：${state.room.inviteCode}`
-    await navigator.clipboard.writeText(text)
+  const copyInvite = async () => {
+    const link = `${window.location.origin}/game/${game.id}`
+    await navigator.clipboard.writeText(`${t.appName}\n${t.roomCode}: ${game.code}\n${link}`)
     setCopied(true)
-    window.setTimeout(() => setCopied(false), 1600)
+    window.setTimeout(() => setCopied(false), 1400)
   }
 
-  const addTodayCard = (event) => {
-    event.preventDefault()
-    const value = newCard.trim()
-    if (!value) return
-    commit((draft) => {
-      draft.todayCards.unshift({
-        id: `today-${Date.now()}`,
-        kind: 'todo',
-        title: value,
-        body: '刚刚加进来的共同小任务。',
-        timeLabel: '今天',
-        ownerId: activeProfileId,
-        status: 'open',
-        votes: { [activeProfileId]: true },
-      })
-    })
-    setNewCard('')
+  const back = () => {
+    window.history.pushState({}, '', '/')
+    setRoute(readRoute())
   }
 
-  if (status.phase === 'loading' || !state) {
+  const currentPlayer = game?.players[game.turnIndex]
+  const myPlayer = game?.players.find((player) => player.id === session.user.id)
+  const legalPieces = game && myPlayer ? getLegalPieces(game, session.user.id) : []
+  const isMyTurn = currentPlayer?.id === session.user.id
+
+  if (!game) {
     return (
-      <main className="loading-screen">
-        <RefreshCw className="spin" size={28} />
-        <p>{status.message}</p>
-      </main>
+      <section className="loading-panel">
+        <RefreshCw className="spin" size={26} />
+        <p>{t.checking}</p>
+      </section>
     )
   }
 
   return (
-    <main className="app-shell">
-      <section className="hero-band">
-        <div className="hero-overlay">
-          <div className="hero-top">
-            <div className="brand-lockup compact">
-              <span className="brand-icon">
-                <Heart size={23} />
-              </span>
-              <div>
-                <p>LumiDay</p>
-                <h1>今天有你</h1>
-              </div>
-            </div>
-            <div className={`sync-pill ${isSupabaseConfigured ? 'online' : 'local'}`}>
-              {isSupabaseConfigured ? <Wifi size={16} /> : <WifiOff size={16} />}
-              {status.message}
-            </div>
-          </div>
-          <div className="hero-main">
-            <div>
-              <span className="date-pill">
-                <CalendarDays size={16} />
-                {state.room.dateLabel}
-              </span>
-              <h2>{state.room.subtitle}</h2>
-              <p>把今天、学习、旅行和小游戏放进同一个房间。不是管理她，是让她被认真照顾到。</p>
-            </div>
-            <div className="room-actions" aria-label="房间操作">
-              <button onClick={copyRoom}>
-                {copied ? <Check size={17} /> : <Share2 size={17} />}
-                {copied ? '已复制' : '发给她'}
-              </button>
-              <span>
-                <LinkIcon size={15} />
-                {state.room.inviteCode}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="workspace-grid">
-        <aside className="side-rail">
-          <section className="rail-section">
-            <div className="section-kicker">
-              <Users size={17} />
-              当前身份
-            </div>
-            <div className="profile-switcher">
-              {profiles.map((profile) => (
-                <button
-                  className={profile.id === activeProfileId ? 'profile-button active' : 'profile-button'}
-                  key={profile.id}
-                  onClick={() => setActiveProfileId(profile.id)}
-                >
-                  <span style={{ background: profile.color }}>{profile.avatar}</span>
-                  <strong>{profile.name}</strong>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="rail-section">
-            <div className="profile-card">
-              <span className="avatar-large" style={{ background: activeProfile?.color }}>
-                {activeProfile?.avatar}
-              </span>
-              <div>
-                <p>{activeProfile?.name}</p>
-                <h3>{activeProfile?.mood}</h3>
-                <span>{activeProfile?.note}</span>
-              </div>
-            </div>
-          </section>
-
-          <section className="rail-section">
-            <div className="section-kicker">
-              <Heart size={17} />
-              轻私人边界
-            </div>
-            <p className="rail-note">
-              只记录安排、偏好和轻互动，不做深度关系分析，也不需要手机号登录。
-            </p>
-          </section>
-        </aside>
-
-        <section className="main-workspace">
-          <nav className="module-tabs" aria-label="模块导航">
-            {viewConfig.map((item) => {
-              const Icon = item.icon
-              return (
-                <button
-                  key={item.id}
-                  className={activeView === item.id ? 'active' : ''}
-                  onClick={() => navigate(item.id)}
-                >
-                  <Icon size={18} />
-                  {item.label}
-                </button>
-              )
-            })}
-          </nav>
-
-          {activeView === 'today' || activeView === 'study' ? (
-            <TodayView
-              state={state}
-              activeProfileId={activeProfileId}
-              partnerProfile={partnerProfile}
-              newCard={newCard}
-              setNewCard={setNewCard}
-              addTodayCard={addTodayCard}
-              commit={commit}
-              showStudy={activeView === 'study'}
-            />
-          ) : null}
-
-          {activeView === 'trip' ? (
-            <TripView state={state} activeProfileId={activeProfileId} commit={commit} />
-          ) : null}
-
-          {activeView === 'play' ? (
-            <PlayView state={state} activeProfileId={activeProfileId} commit={commit} />
-          ) : null}
-        </section>
-      </section>
-    </main>
-  )
-}
-
-function TodayView({
-  state,
-  activeProfileId,
-  partnerProfile,
-  newCard,
-  setNewCard,
-  addTodayCard,
-  commit,
-  showStudy,
-}) {
-  const openCards = state.todayCards.filter((card) => card.status !== 'done').length
-  const mutualVotes = state.todayCards.filter(
-    (card) => card.votes?.[profileIds.primary] && card.votes?.[profileIds.partner],
-  ).length
-
-  const toggleVote = (cardId) => {
-    commit((draft) => {
-      const card = draft.todayCards.find((item) => item.id === cardId)
-      if (!card) return
-      card.votes = { ...card.votes, [activeProfileId]: !card.votes?.[activeProfileId] }
-    })
-  }
-
-  const toggleStatus = (cardId) => {
-    commit((draft) => {
-      const card = draft.todayCards.find((item) => item.id === cardId)
-      if (!card) return
-      card.status = card.status === 'done' ? 'open' : 'done'
-    })
-  }
-
-  const updateStudy = (itemId, delta) => {
-    commit((draft) => {
-      const item = draft.studyItems.find((study) => study.id === itemId)
-      if (!item) return
-      item.progress = Math.max(0, Math.min(100, item.progress + delta))
-      item.status = item.progress >= 100 ? 'done' : item.progress >= 60 ? 'next' : 'open'
-    })
-  }
-
-  const setFocus = (minutes) => {
-    commit((draft) => {
-      draft.focusMinutes = minutes
-    })
-  }
-
-  return (
-    <>
-      <section className="summary-strip" aria-label="今日摘要">
-        <MetricCard icon={ClipboardList} label="今日卡片" value={`${openCards} 个待确认`} />
-        <MetricCard icon={Heart} label="共同同意" value={`${mutualVotes} 个安排`} />
-        <MetricCard icon={Timer} label="学习计时" value={`${state.focusMinutes} 分钟`} />
-        <MetricCard icon={MessageCircle} label="低压力沟通" value="先选再聊" />
-      </section>
-
-      {!showStudy ? (
-        <section className="content-section">
-          <div className="section-title">
-            <div>
-              <CalendarDays size={20} />
-              <h2>今天怎么安排</h2>
-            </div>
-            <p>所有安排先变成卡片，两个人用轻投票确认，不靠猜。</p>
-          </div>
-
-          <form className="quick-add" onSubmit={addTodayCard}>
-            <input
-              value={newCard}
-              onChange={(event) => setNewCard(event.target.value)}
-              placeholder="加一个今天的小安排"
-            />
-            <button type="submit">
-              <Plus size={17} />
-              添加
-            </button>
-          </form>
-
-          <div className="today-grid">
-            {state.todayCards.map((card) => (
-              <article className={`today-card ${card.status === 'done' ? 'done' : ''}`} key={card.id}>
-                <div className="card-topline">
-                  <span>{card.timeLabel}</span>
-                  <button onClick={() => toggleStatus(card.id)}>
-                    {card.status === 'done' ? <Check size={16} /> : <Circle size={16} />}
-                    {statusLabels[card.status] ?? '待确认'}
-                  </button>
-                </div>
-                <h3>{card.title}</h3>
-                <p>{card.body}</p>
-                <div className="vote-stack">
-                  {state.profiles.map((profile) => (
-                    <button
-                      className={card.votes?.[profile.id] ? 'voted' : ''}
-                      disabled={profile.id !== activeProfileId}
-                      key={profile.id}
-                      onClick={() => toggleVote(card.id)}
-                    >
-                      <span style={{ background: profile.color }}>{profile.avatar}</span>
-                      {card.votes?.[profile.id] ? '想要' : '待选'}
-                    </button>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : (
-        <section className="content-section">
-          <div className="section-title">
-            <div>
-              <GraduationCap size={20} />
-              <h2>学习陪跑</h2>
-            </div>
-            <p>学习不是堆资料，是把任务变成今天真的会发生的一小段。</p>
-          </div>
-
-          <div className="focus-band">
-            <div>
-              <span>
-                <Timer size={16} />
-                专注时间
-              </span>
-              <h3>{state.focusMinutes} 分钟</h3>
-              <p>适合一起坐下来，各自做一件能完成的小任务。</p>
-            </div>
-            <div className="segmented-control">
-              {[15, 25, 45].map((minutes) => (
-                <button
-                  className={state.focusMinutes === minutes ? 'active' : ''}
-                  key={minutes}
-                  onClick={() => setFocus(minutes)}
-                >
-                  {minutes}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="study-list">
-            {state.studyItems.map((item) => (
-              <article className="study-card" key={item.id}>
-                <div className="card-topline">
-                  <span>{item.course}</span>
-                  <button onClick={() => updateStudy(item.id, 20)}>
-                    <Check size={16} />
-                    推进
-                  </button>
-                </div>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
-                <div className="progress-track" aria-label={`${item.title} 进度`}>
-                  <i style={{ width: `${item.progress}%` }} />
-                </div>
-                <div className="ai-hint">
-                  <Sparkles size={16} />
-                  {item.aiHint}
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {!showStudy ? (
-        <section className="content-section split-section">
-          <div className="soft-note">
-            <Coffee size={22} />
-            <h3>今晚建议</h3>
+    <section className="game-layout">
+      <div className="game-main">
+        <div className="game-title-row">
+          <div>
+            <span className="eyebrow">
+              <Gamepad2 size={18} />
+              {game.status === 'waiting' ? t.waiting : game.status === 'finished' ? t.finished : t.playing}
+            </span>
+            <h2>{game.title}</h2>
             <p>
-              如果 {partnerProfile?.name} 今天累，就不要再塞第三个安排。选一个舒服的地方，把计划变成被照顾到的感觉。
+              {t.roomCode} {game.code} · {game.players.length}/4
             </p>
           </div>
-          <div className="soft-note accent">
-            <Camera size={22} />
-            <h3>可拍视频角度</h3>
-            <p>情侣旅行吵架，本质不是谁矫情，是需求没有被共同建模。</p>
+          <div className="room-tools">
+            <button onClick={copyInvite}>
+              {copied ? <Sparkles size={17} /> : <Share2 size={17} />}
+              {copied ? 'OK' : t.invite}
+            </button>
+            <button onClick={back}>{t.lobby}</button>
+          </div>
+        </div>
+        <FlightBoard game={game} activeUserId={session.user.id} legalPieces={legalPieces} onMove={(pieceId) => act(() => movePiece(game.id, pieceId))} />
+      </div>
+
+      <aside className="control-panel">
+        <section className="turn-card">
+          <span className="eyebrow">
+            <Crown size={17} />
+            {t.turn}
+          </span>
+          <h3>{currentPlayer ? `${currentPlayer.emoji} ${currentPlayer.displayName}` : t.waiting}</h3>
+          <p>
+            {game.status === 'waiting'
+              ? t.waiting
+              : game.status === 'finished'
+                ? `${winnerName(game)} ${t.won}`
+                : isMyTurn
+                  ? t.yourTurn
+                  : t.waitOther}
+          </p>
+          <div className="dice-box">
+            <Dice5 size={28} />
+            <strong>{game.dice || '-'}</strong>
+          </div>
+          <button
+            className="primary-button wide"
+            disabled={!isMyTurn || Boolean(game.dice) || game.status !== 'playing' || busy}
+            onClick={() => act(() => rollDice(game.id))}
+          >
+            <Dice5 size={18} />
+            {t.roll}
+          </button>
+          <button className="ghost-button wide" disabled={busy} onClick={() => act(() => restartGame(game.id))}>
+            <RotateCcw size={18} />
+            {t.restart}
+          </button>
+          {error ? <p className="form-error">{error}</p> : null}
+        </section>
+
+        <section className="players-card">
+          <span className="eyebrow">
+            <Users size={17} />
+            {t.players}
+          </span>
+          <div className="player-list">
+            {game.players.map((player, index) => (
+              <div className={`player-row ${currentPlayer?.id === player.id ? 'active' : ''}`} key={player.id}>
+                <span className={`color-token ${player.color}`}>{player.emoji}</span>
+                <div>
+                  <strong>{player.displayName}</strong>
+                  <p>{index === game.turnIndex ? t.turn : `${finishedCount(game, player.id)}/4`}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
-      ) : null}
-    </>
-  )
-}
 
-function TripView({ state, activeProfileId, commit }) {
-  const updateTripVote = (itemId, vote) => {
-    commit((draft) => {
-      const item = draft.tripItems.find((tripItem) => tripItem.id === itemId)
-      if (!item) return
-      item.voteBy = { ...item.voteBy, [activeProfileId]: vote }
-      item.score = Object.values(item.voteBy).reduce(
-        (score, value) => score + (value === 'must' ? 12 : value === 'maybe' ? 6 : 0),
-        0,
-      )
-    })
-  }
-
-  const selectPlan = (planId) => {
-    commit((draft) => {
-      draft.tripPlans = draft.tripPlans.map((plan) => ({ ...plan, selected: plan.id === planId }))
-    })
-  }
-
-  return (
-    <>
-      <section className="content-section">
-        <div className="section-title">
-          <div>
-            <Plane size={20} />
-            <h2>旅行共创</h2>
+        <section className="log-card">
+          <span className="eyebrow">
+            <Trophy size={17} />
+            {t.log}
+          </span>
+          <div className="log-list">
+            {game.log.slice(0, 8).map((entry, index) => (
+              <p key={`${entry}-${index}`}>{entry}</p>
+            ))}
           </div>
-          <p>路线、预算、酒店、拍照点先共同选择，减少到目的地才开始吵的概率。</p>
-        </div>
-
-        <div className="trip-layout">
-          {state.tripItems.map((item) => (
-            <article className="trip-card" key={item.id}>
-              <img alt={item.name} src={item.image} />
-              <div className="trip-card-body">
-                <div className="card-topline">
-                  <span>{item.city}</span>
-                  <strong>{item.score} 分</strong>
-                </div>
-                <h3>{item.name}</h3>
-                <p>{item.reason}</p>
-                <div className="tag-row">
-                  {item.tags.map((tag) => (
-                    <span key={tag}>{tag}</span>
-                  ))}
-                </div>
-                <div className="vote-row" aria-label={`${item.name} 投票`}>
-                  {Object.entries(voteLabels).map(([value, label]) => (
-                    <button
-                      className={item.voteBy?.[activeProfileId] === value ? 'active' : ''}
-                      key={value}
-                      onClick={() => updateTripVote(item.id, value)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="content-section">
-        <div className="section-title">
-          <div>
-            <Hotel size={20} />
-            <h2>三套方案</h2>
-          </div>
-          <p>不是把景点堆满，而是把舒服、预算、照片和安全放进同一个选择里。</p>
-        </div>
-
-        <div className="plan-grid">
-          {state.tripPlans.map((plan) => (
-            <article className={`plan-card ${plan.selected ? 'selected' : ''}`} key={plan.id}>
-              <div className="card-topline">
-                <span>{plan.tagline}</span>
-                <button onClick={() => selectPlan(plan.id)}>
-                  {plan.selected ? <Check size={16} /> : <CircleDot size={16} />}
-                  {plan.selected ? '已锁定' : '选择'}
-                </button>
-              </div>
-              <h3>{plan.name}</h3>
-              <div className="budget-line">
-                <WalletCards size={18} />
-                AUD {plan.budget}
-              </div>
-              <div className="day-chips">
-                {plan.days.map((day) => (
-                  <span key={day}>{day}</span>
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-    </>
-  )
-}
-
-function PlayView({ state, activeProfileId, commit }) {
-  const answerGame = (sessionId, answer) => {
-    commit((draft) => {
-      const session = draft.gameSessions.find((game) => game.id === sessionId)
-      if (!session) return
-      session.answers = { ...session.answers, [activeProfileId]: answer }
-      const answeredCount = Object.keys(session.answers).length
-      session.revealed = answeredCount >= draft.profiles.length
-    })
-  }
-
-  const resetGame = (sessionId) => {
-    commit((draft) => {
-      const session = draft.gameSessions.find((game) => game.id === sessionId)
-      if (!session) return
-      session.answers = {}
-      session.revealed = false
-    })
-  }
-
-  return (
-    <section className="content-section">
-      <div className="section-title">
-        <div>
-          <Gamepad2 size={20} />
-          <h2>一起玩</h2>
-        </div>
-        <p>小游戏不是幼稚，是把“你到底想什么”换成低压力选择题。</p>
-      </div>
-
-      <div className="game-grid">
-        {state.gameSessions.map((session) => (
-          <article className="game-card" key={session.id}>
-            <div className="card-topline">
-              <span>{session.title}</span>
-              <button onClick={() => resetGame(session.id)}>
-                <RefreshCw size={16} />
-                重来
-              </button>
-            </div>
-            <h3>{session.prompt}</h3>
-            <div className="option-grid">
-              {session.options.map((option) => (
-                <button
-                  className={session.answers?.[activeProfileId] === option ? 'selected' : ''}
-                  key={option}
-                  onClick={() => answerGame(session.id, option)}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-            <div className="answer-board">
-              {state.profiles.map((profile) => (
-                <div key={profile.id}>
-                  <span style={{ background: profile.color }}>{profile.avatar}</span>
-                  <strong>{profile.name}</strong>
-                  <p>{session.revealed ? session.answers?.[profile.id] || '还没答' : '已加密'}</p>
-                </div>
-              ))}
-            </div>
-            <div className="reward-line">
-              <Gift size={16} />
-              {session.revealed ? getGameResultText(session, state.profiles) : '双方都答完才揭晓'}
-            </div>
-          </article>
-        ))}
-      </div>
+        </section>
+      </aside>
     </section>
   )
 }
 
-function getGameResultText(session, profiles) {
-  const answers = profiles.map((profile) => session.answers?.[profile.id]).filter(Boolean)
-  if (answers.length < profiles.length) return '还有人没答完'
-  const sameAnswer = answers.every((answer) => answer === answers[0])
-  return sameAnswer ? session.reward : '答案不同也很好，说明可以低压力聊一下差异。'
+function FlightBoard({ game, activeUserId, legalPieces, onMove }) {
+  const cellMap = useMemo(() => buildBoardCellMap(game), [game])
+  const legalIds = new Set(legalPieces.map((piece) => piece.id))
+
+  return (
+    <div className="board-wrap">
+      <div className="flight-board" aria-label="飞行棋棋盘">
+        {Array.from({ length: boardSize * boardSize }).map((_, flatIndex) => {
+          const row = Math.floor(flatIndex / boardSize)
+          const col = flatIndex % boardSize
+          const key = `${row},${col}`
+          const cell = cellMap.get(key)
+          const isCenter = row >= 6 && row <= 8 && col >= 6 && col <= 8
+          return (
+            <div className={`board-cell ${cell?.type || ''} ${cell?.color || ''} ${isCenter ? 'center' : ''}`} key={key}>
+              {isCenter && row === 7 && col === 7 ? <Crown size={26} /> : null}
+              {cell?.pieces?.map(({ piece, player }) => {
+                const canMove = player.id === activeUserId && legalIds.has(piece.id)
+                return (
+                  <button
+                    aria-label={`${player.displayName} ${piece.index + 1}`}
+                    className={`plane-piece ${player.color} ${canMove ? 'movable' : ''}`}
+                    disabled={!canMove}
+                    key={piece.id}
+                    onClick={() => onMove(piece.id)}
+                  >
+                    {player.emoji}
+                    <small>{piece.index + 1}</small>
+                  </button>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+      <div className="board-caption">
+        <span>
+          <Plane size={16} />
+          6 起飞
+        </span>
+        <span>
+          <Trophy size={16} />
+          4 架到终点
+        </span>
+      </div>
+    </div>
+  )
 }
 
-function MetricCard({ icon: Icon, label, value }) {
-  return (
-    <article className="metric-card">
-      <Icon size={19} />
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <ChevronRight size={16} />
-    </article>
-  )
+function buildBoardCellMap(game) {
+  const map = new Map()
+  trackCoords.forEach(([row, col], index) => {
+    map.set(`${row},${col}`, { type: 'track', index, pieces: [] })
+  })
+  Object.entries(homeCoords).forEach(([color, coords]) => {
+    coords.forEach(([row, col]) => {
+      map.set(`${row},${col}`, { type: 'home', color, pieces: [] })
+    })
+  })
+  Object.entries(baseCoords).forEach(([color, coords]) => {
+    coords.forEach(([row, col]) => {
+      map.set(`${row},${col}`, { type: 'base', color, pieces: [] })
+    })
+  })
+
+  game.players.forEach((player) => {
+    ;(game.pieces[player.id] || []).forEach((piece) => {
+      let coords
+      if (piece.position === -1) coords = baseCoords[player.color][piece.index]
+      else if (piece.position < trackLength) coords = trackCoords[toGlobalPosition(player.color, piece.position)]
+      else if (piece.position < trackLength + homeLength) coords = homeCoords[player.color][piece.position - trackLength]
+      else coords = [7, 7]
+      const key = `${coords[0]},${coords[1]}`
+      if (!map.has(key)) map.set(key, { type: 'center', pieces: [] })
+      map.get(key).pieces.push({ piece, player })
+    })
+  })
+  return map
+}
+
+function buildTrackCoords() {
+  const coords = []
+  for (let col = 0; col < boardSize; col += 1) coords.push([0, col])
+  for (let row = 1; row < boardSize; row += 1) coords.push([row, boardSize - 1])
+  for (let col = boardSize - 2; col >= 0; col -= 1) coords.push([boardSize - 1, col])
+  for (let row = boardSize - 2; row > 0; row -= 1) coords.push([row, 0])
+  return coords
+}
+
+function readRoute() {
+  const parts = window.location.pathname.split('/').filter(Boolean)
+  return { gameId: parts[0] === 'game' ? parts[1] : null }
+}
+
+function winnerName(game) {
+  return game.players.find((player) => player.id === game.winnerId)?.displayName || 'Winner'
+}
+
+function finishedCount(game, playerId) {
+  return (game.pieces[playerId] || []).filter((piece) => piece.position >= trackLength + homeLength).length
+}
+
+function countForList(tasks, list) {
+  if (list === 'all') return tasks.length
+  if (list === 'important') return tasks.filter((task) => task.important).length
+  return tasks.filter((task) => task.list === list).length
+}
+
+function todayString(offsetDays = 0) {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  return date.toISOString().slice(0, 10)
+}
+
+function dateDistance(dateString) {
+  if (!dateString) return ''
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const date = new Date(`${dateString}T00:00:00`)
+  const diff = Math.round((date - today) / 86400000)
+  if (diff === 0) return 'today'
+  if (diff > 0) return `${diff}d left`
+  return `${Math.abs(diff)}d ago`
+}
+
+function formatTimer(seconds) {
+  const minutes = Math.floor(seconds / 60)
+  const rest = seconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
+}
+
+function formatShortTime(value) {
+  if (!value) return ''
+  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+function detectPlatform(url) {
+  const host = safeHost(url)
+  if (host.includes('instagram')) return 'Instagram'
+  if (host.includes('douyin')) return 'Douyin'
+  if (host.includes('xiaohongshu') || host.includes('xhslink')) return 'Xiaohongshu'
+  if (host.includes('tiktok')) return 'TikTok'
+  if (host.includes('youtube') || host.includes('youtu.be')) return 'YouTube'
+  return host || 'Link'
+}
+
+function safeHost(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
+function createClientId() {
+  return crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10)
 }
 
 export default App

@@ -1,0 +1,16 @@
+name = "yuhuangdadi"
+main = "worker/index.js"
+compatibility_date = "2026-06-05"
+workers_dev = true
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "YuhuangHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["YuhuangHub"]

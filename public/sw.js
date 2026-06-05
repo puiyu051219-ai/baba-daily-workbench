@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lumiday-v1'
+const CACHE_NAME = 'yuhuangdadi-v2'
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icon.svg']
 
 self.addEventListener('install', (event) => {
