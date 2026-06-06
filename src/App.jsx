@@ -90,6 +90,7 @@ const locales = [
   { id: 'en', label: 'English' },
 ]
 const chatNotifyKey = 'baba:chat-notify'
+const tourSeenKey = 'baba:tour-seen'
 
 const copy = {
   'zh-Hans': {
@@ -204,6 +205,31 @@ const copy = {
     waiting: '等人加入',
     playing: '对局中',
     finished: '已结束',
+    guide: '新手导览',
+    guideIntro: '第一次用可以跟着点一遍。',
+    guideNext: '下一步',
+    guidePrev: '上一步',
+    guideSkip: '先自己看',
+    guideDone: '完成导览',
+    guideNow: '现在看',
+    guidePlanTitle: '先从 To Do List 开始',
+    guidePlanBody: '在这里选 BBG、BBP 或共同，输入任务和日期，点添加。完成后点左侧圆圈，重要任务点星星。',
+    guideStudyTitle: '学习任务分开记',
+    guideStudyBody: '她的课程、你的课程、共同要学的东西都能分开。常用按钮可以一键加复习卡、错题复盘。',
+    guideFocusTitle: '番茄钟可以自定义',
+    guideFocusBody: '专注、休息和轮数都可以自己填。点开始后进入一轮，结束会累计轮数。',
+    guideDatesTitle: '倒数日和纪念日',
+    guideDatesBody: '生日、见面、Deadline 都放这里。每张卡会显示阳历、农历、节日，还能加到 Google Calendar。',
+    guideChatTitle: '这里就是你们的小群',
+    guideChatBody: '可以发消息、贴抖音/小红书/Instagram 链接，卡片会可视化。还能点表情反应、打卡、开提醒。',
+    guidePhotosTitle: '照片墙用来留东西',
+    guidePhotosBody: '可以上传照片，也可以贴图片链接。照片会像小相册一样保存在一起。',
+    guideJournalTitle: '手记是各自的成长区',
+    guideJournalBody: '日记、自我成长、感悟都能写。BBG 和 BBP 的内容分开看，不会混成一坨。',
+    guideFortuneTitle: '小命理看当天气氛',
+    guideFortuneBody: '这里会显示农历和节日，也能随手问今天适合做什么，轻松玩一下就好。',
+    guidePlayTitle: '最后是一块玩的板块',
+    guidePlayBody: '谕皇大帝在这里。可以开飞行棋房间，也能玩小厨房、你画我猜、成语接龙和脑筋急转弯。',
   },
   'zh-Hant-HK': {
     appName: '八八婆同八八公嘅日常工作台',
@@ -317,6 +343,31 @@ const copy = {
     waiting: '等人加入',
     playing: '玩緊',
     finished: '完咗',
+    guide: '新手導覽',
+    guideIntro: '第一次用可以跟住點一次。',
+    guideNext: '下一步',
+    guidePrev: '上一步',
+    guideSkip: '自己睇先',
+    guideDone: '完成導覽',
+    guideNow: '而家睇',
+    guidePlanTitle: '先由 To Do List 開始',
+    guidePlanBody: '喺度揀 BBG、BBP 或共同，輸入任務同日期，再撳新增。做完撳左邊圓圈，重要任務撳星星。',
+    guideStudyTitle: '學習任務分開記',
+    guideStudyBody: '佢嘅課程、你嘅課程、共同要學嘅嘢都可以分開。常用按鈕可以一鍵加複習卡、錯題復盤。',
+    guideFocusTitle: '番茄鐘可以自訂',
+    guideFocusBody: '專注、休息同輪數都可以自己填。撳開始就入一輪，完咗會累計輪數。',
+    guideDatesTitle: '倒數日同紀念日',
+    guideDatesBody: '生日、見面、Deadline 都放呢度。每張卡會顯示陽曆、農曆、節日，亦可以加到 Google Calendar。',
+    guideChatTitle: '呢度就係你哋嘅小群',
+    guideChatBody: '可以發訊息、貼抖音/小紅書/Instagram 連結，卡片會可視化。仲可以畀表情反應、打卡、開提醒。',
+    guidePhotosTitle: '相片牆用嚟留低嘢',
+    guidePhotosBody: '可以上載相，亦可以貼圖片連結。相會好似小相簿咁放埋一齊。',
+    guideJournalTitle: '手記係各自成長區',
+    guideJournalBody: '日記、自我成長、感悟都可以寫。BBG 同 BBP 嘅內容分開睇，唔會混埋。',
+    guideFortuneTitle: '小命理睇今日氣氛',
+    guideFortuneBody: '呢度會顯示農曆同節日，亦可以隨手問今日適合做咩，輕鬆玩吓就好。',
+    guidePlayTitle: '最後係一齊玩',
+    guidePlayBody: '諭皇大帝喺呢度。可以開飛行棋房，亦可以玩小廚房、你畫我估、成語接龍同腦筋急轉彎。',
   },
   en: {
     appName: 'Baba Po and Baba Gong',
@@ -430,6 +481,31 @@ const copy = {
     waiting: 'Waiting',
     playing: 'Playing',
     finished: 'Finished',
+    guide: 'Guide',
+    guideIntro: 'Tap through once to learn the workspace.',
+    guideNext: 'Next',
+    guidePrev: 'Back',
+    guideSkip: 'Skip',
+    guideDone: 'Done',
+    guideNow: 'Now viewing',
+    guidePlanTitle: 'Start with the To Do List',
+    guidePlanBody: 'Pick BBG, BBP, or together, type a task and date, then add it. Tap the circle to finish and the star for important tasks.',
+    guideStudyTitle: 'Study tasks stay separate',
+    guideStudyBody: 'Her courses, your courses, and shared learning can stay apart. Quick buttons add review cards and mistake reviews.',
+    guideFocusTitle: 'Customize the Pomodoro timer',
+    guideFocusBody: 'Focus time, break time, and sessions are editable. Start a round and the session count will update when it ends.',
+    guideDatesTitle: 'Countdowns and anniversaries',
+    guideDatesBody: 'Birthdays, meetups, and deadlines live here. Cards show solar date, lunar date, festivals, and Google Calendar links.',
+    guideChatTitle: 'This is your little group chat',
+    guideChatBody: 'Send messages or paste Douyin, Xiaohongshu, or Instagram links. Link cards preview visually, with reactions, check-ins, and alerts.',
+    guidePhotosTitle: 'Keep memories on the photo wall',
+    guidePhotosBody: 'Upload photos or paste image links. Everything stays together like a small shared album.',
+    guideJournalTitle: 'Journal is the growth area',
+    guideJournalBody: 'Diary, growth, and insight entries can be written separately for BBG and BBP.',
+    guideFortuneTitle: 'Fortune is the day mood',
+    guideFortuneBody: 'It shows lunar date and festivals, and lets you casually ask what today is good for.',
+    guidePlayTitle: 'Play together at the end',
+    guidePlayBody: 'Yuhuang Dadi lives here. Start flying chess or play kitchen, draw guess, idiom chain, and riddles.',
   },
 }
 
@@ -444,6 +520,20 @@ const navItems = [
   { id: 'fortune', icon: Wand2 },
   { id: 'play', icon: Gamepad2 },
 ]
+
+function getTourSteps(t) {
+  return [
+    { module: 'plan', title: t.guidePlanTitle, body: t.guidePlanBody, icon: ListChecks },
+    { module: 'study', title: t.guideStudyTitle, body: t.guideStudyBody, icon: BookOpen },
+    { module: 'focus', title: t.guideFocusTitle, body: t.guideFocusBody, icon: AlarmClock },
+    { module: 'dates', title: t.guideDatesTitle, body: t.guideDatesBody, icon: CalendarDays },
+    { module: 'links', title: t.guideChatTitle, body: t.guideChatBody, icon: MessageCircle },
+    { module: 'photos', title: t.guidePhotosTitle, body: t.guidePhotosBody, icon: Camera },
+    { module: 'journal', title: t.guideJournalTitle, body: t.guideJournalBody, icon: PencilLine },
+    { module: 'fortune', title: t.guideFortuneTitle, body: t.guideFortuneBody, icon: Wand2 },
+    { module: 'play', title: t.guidePlayTitle, body: t.guidePlayBody, icon: Gamepad2 },
+  ]
+}
 
 const baseCoords = {
   red: [
@@ -699,6 +789,10 @@ function Dashboard({ session, setRoute, locale, t }) {
   const workspaceRef = useRef(null)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const tourSteps = useMemo(() => getTourSteps(t), [t])
+  const [tourOpen, setTourOpen] = useState(() => localStorage.getItem(tourSeenKey) !== '1')
+  const [tourIndex, setTourIndex] = useState(0)
+  const currentTourStep = tourSteps[tourIndex] || tourSteps[0]
 
   const refresh = useCallback(async () => {
     try {
@@ -721,6 +815,12 @@ function Dashboard({ session, setRoute, locale, t }) {
       window.removeEventListener('yhd-local-sync', localSync)
     }
   }, [refresh])
+
+  useEffect(() => {
+    if (tourOpen && currentTourStep?.module) {
+      setActive(currentTourStep.module)
+    }
+  }, [currentTourStep?.module, tourOpen])
 
   const commit = async (updater) => {
     const current = workspaceRef.current || workspace
@@ -756,16 +856,39 @@ function Dashboard({ session, setRoute, locale, t }) {
 
   const panelProps = { workspace, commit, session, setRoute, t }
   const ActiveIcon = navItems.find((item) => item.id === active)?.icon || ListChecks
+  const startTour = () => {
+    setTourIndex(0)
+    setTourOpen(true)
+  }
+  const closeTour = () => {
+    localStorage.setItem(tourSeenKey, '1')
+    setTourOpen(false)
+    window.requestAnimationFrame(() => document.activeElement?.blur?.())
+  }
+  const nextTourStep = () => {
+    if (tourIndex >= tourSteps.length - 1) {
+      closeTour()
+      return
+    }
+    setTourIndex((value) => value + 1)
+  }
+  const prevTourStep = () => setTourIndex((value) => Math.max(0, value - 1))
 
   return (
     <section className="dashboard-layout">
       <aside className="side-nav">
-        {navItems.map(({ id, icon: Icon }) => (
-          <button key={id} className={active === id ? 'active' : ''} onClick={() => setActive(id)}>
-            <Icon size={19} />
-            {t[id]}
-          </button>
-        ))}
+        {navItems.map(({ id, icon: Icon }) => {
+          const className = [
+            active === id ? 'active' : '',
+            tourOpen && currentTourStep?.module === id ? 'tour-highlight' : '',
+          ].filter(Boolean).join(' ')
+          return (
+            <button key={id} className={className} onClick={() => setActive(id)}>
+              <Icon size={19} />
+              {t[id]}
+            </button>
+          )
+        })}
       </aside>
 
       <section className="dashboard-main">
@@ -774,19 +897,63 @@ function Dashboard({ session, setRoute, locale, t }) {
             <ActiveIcon size={18} />
             {t[active]}
           </span>
-          <StatusLine workspace={workspace} saving={saving} error={error} t={t} />
+          <div className="section-actions">
+            <button className="guide-button" onClick={startTour}>
+              <Sparkles size={17} />
+              {t.guide}
+            </button>
+            <StatusLine workspace={workspace} saving={saving} error={error} t={t} />
+          </div>
         </div>
-        {active === 'plan' ? <PlanPanel {...panelProps} /> : null}
-        {active === 'study' ? <StudyPanel {...panelProps} /> : null}
-        {active === 'focus' ? <FocusPanel {...panelProps} /> : null}
-        {active === 'dates' ? <DatesPanel {...panelProps} /> : null}
-        {active === 'links' ? <LinksPanel {...panelProps} /> : null}
-        {active === 'photos' ? <PhotosPanel {...panelProps} /> : null}
-        {active === 'journal' ? <JournalPanel {...panelProps} /> : null}
-        {active === 'fortune' ? <FortunePanel {...panelProps} /> : null}
-        {active === 'play' ? <PlayPanel {...panelProps} /> : null}
+        <div className={tourOpen ? 'tour-stage' : ''}>
+          {active === 'plan' ? <PlanPanel {...panelProps} /> : null}
+          {active === 'study' ? <StudyPanel {...panelProps} /> : null}
+          {active === 'focus' ? <FocusPanel {...panelProps} /> : null}
+          {active === 'dates' ? <DatesPanel {...panelProps} /> : null}
+          {active === 'links' ? <LinksPanel {...panelProps} /> : null}
+          {active === 'photos' ? <PhotosPanel {...panelProps} /> : null}
+          {active === 'journal' ? <JournalPanel {...panelProps} /> : null}
+          {active === 'fortune' ? <FortunePanel {...panelProps} /> : null}
+          {active === 'play' ? <PlayPanel {...panelProps} /> : null}
+        </div>
+        {tourOpen ? (
+          <TourOverlay
+            index={tourIndex}
+            onClose={closeTour}
+            onNext={nextTourStep}
+            onPrev={prevTourStep}
+            step={currentTourStep}
+            total={tourSteps.length}
+            t={t}
+          />
+        ) : null}
       </section>
     </section>
+  )
+}
+
+function TourOverlay({ index, total, step, onNext, onPrev, onClose, t }) {
+  const Icon = step.icon || Sparkles
+  const isLast = index >= total - 1
+  return (
+    <aside className="tour-overlay" aria-live="polite">
+      <div className="tour-count">{index + 1}/{total}</div>
+      <span className="eyebrow">
+        <Icon size={18} />
+        {t.guideNow}: {t[step.module]}
+      </span>
+      <h2>{step.title}</h2>
+      <p>{step.body}</p>
+      <small>{t.guideIntro}</small>
+      <div className="tour-actions">
+        <button onClick={onClose}>{t.guideSkip}</button>
+        <button disabled={index === 0} onClick={onPrev}>{t.guidePrev}</button>
+        <button className="primary-button" onClick={onNext}>
+          {isLast ? t.guideDone : t.guideNext}
+          <ChevronRight size={17} />
+        </button>
+      </div>
+    </aside>
   )
 }
 
@@ -1137,12 +1304,14 @@ function FocusPanel({ workspace, commit, t }) {
   const [focusInput, setFocusInput] = useState(String(workspace.timer.focusMinutes))
   const [breakInput, setBreakInput] = useState(String(workspace.timer.breakMinutes))
   const [sessionsInput, setSessionsInput] = useState(String(workspace.timer.sessions))
+  const [editingTimerField, setEditingTimerField] = useState('')
 
   useEffect(() => {
+    if (editingTimerField) return
     setFocusInput(String(workspace.timer.focusMinutes))
     setBreakInput(String(workspace.timer.breakMinutes))
     setSessionsInput(String(workspace.timer.sessions))
-  }, [workspace.timer.focusMinutes, workspace.timer.breakMinutes, workspace.timer.sessions])
+  }, [editingTimerField, workspace.timer.focusMinutes, workspace.timer.breakMinutes, workspace.timer.sessions])
 
   useEffect(() => {
     if (!running) return undefined
@@ -1175,6 +1344,11 @@ function FocusPanel({ workspace, commit, t }) {
     if (field === 'focusMinutes') setSecondsLeft(nextValue * 60)
   }
 
+  const finishTimerEdit = (field, value, options = {}) => {
+    setEditingTimerField('')
+    commitTimerNumber(field, value, options)
+  }
+
   return (
     <div className="timer-layout">
       <section className="timer-card">
@@ -1203,10 +1377,11 @@ function FocusPanel({ workspace, commit, t }) {
             value={focusInput}
             min="1"
             max="180"
-            onBlur={(event) => commitTimerNumber('focusMinutes', event.target.value, { min: 1, max: 180 })}
-            onChange={(event) => {
-              setFocusInput(event.target.value)
-              commitTimerNumber('focusMinutes', event.target.value, { min: 1, max: 180 })
+            onBlur={(event) => finishTimerEdit('focusMinutes', event.target.value, { min: 1, max: 180 })}
+            onChange={(event) => setFocusInput(event.target.value)}
+            onFocus={() => setEditingTimerField('focusMinutes')}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.currentTarget.blur()
             }}
             type="number"
           />
@@ -1217,10 +1392,11 @@ function FocusPanel({ workspace, commit, t }) {
             value={breakInput}
             min="1"
             max="90"
-            onBlur={(event) => commitTimerNumber('breakMinutes', event.target.value, { min: 1, max: 90 })}
-            onChange={(event) => {
-              setBreakInput(event.target.value)
-              commitTimerNumber('breakMinutes', event.target.value, { min: 1, max: 90 })
+            onBlur={(event) => finishTimerEdit('breakMinutes', event.target.value, { min: 1, max: 90 })}
+            onChange={(event) => setBreakInput(event.target.value)}
+            onFocus={() => setEditingTimerField('breakMinutes')}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.currentTarget.blur()
             }}
             type="number"
           />
@@ -1231,10 +1407,11 @@ function FocusPanel({ workspace, commit, t }) {
             value={sessionsInput}
             min="0"
             max="999"
-            onBlur={(event) => commitTimerNumber('sessions', event.target.value, { min: 0, max: 999 })}
-            onChange={(event) => {
-              setSessionsInput(event.target.value)
-              commitTimerNumber('sessions', event.target.value, { min: 0, max: 999 })
+            onBlur={(event) => finishTimerEdit('sessions', event.target.value, { min: 0, max: 999 })}
+            onChange={(event) => setSessionsInput(event.target.value)}
+            onFocus={() => setEditingTimerField('sessions')}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.currentTarget.blur()
             }}
             type="number"
           />
